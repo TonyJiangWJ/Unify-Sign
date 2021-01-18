@@ -1,0 +1,110 @@
+<!--
+ * @Author: TonyJiangWJ
+ * @Date: 2020-11-29 13:17:06
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2020-12-26 12:03:57
+ * @Description: 
+-->
+<!DOCTYPE html>
+<html lang=en>
+
+<head>
+  <meta charset=utf-8>
+  <meta http-equiv=X-UA-Compatible content="IE=edge">
+  <meta name=viewport content="width=device-width,initial-scale=1">
+  <title>配置工具</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.10/lib/index.css" />
+  <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script> -->
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vant@2.10/lib/vant.min.js"></script>
+</head>
+
+<body>
+  <noscript><strong>We're sorry but this doesn't work properly without JavaScript enabled. Please enable
+      it to continue.</strong></noscript>
+  <div id=app class="root-container" v-cloak style="min-height:755px;background: #ffffff;">
+    <van-tabs v-model="activeTab" sticky swipeable>
+      <van-tab title="基础设置">
+        <sample-configs />
+      </van-tab>
+      <van-tab title="进阶设置">
+        <advance-configs />
+      </van-tab>
+      <van-tab>
+        <template #title>
+          控件文本设置
+          <van-icon name="more-o" @click="clickedMenu" class="menu-reference" />
+        </template>
+        <widget-configs />
+      </van-tab>
+    </van-tabs>
+    <van-dialog v-model="showMenuDialog" v-cloak title="菜单" :show-confirm-button="false" :close-on-click-overlay="true" :get-container="getDialogContainer">
+      <van-divider :style="{ margin: '0' }"></van-divider>
+      <van-row type="flex" justify="center" class="van-cell">
+        <van-col @click="resetDefaultConfigs">重置所有配置为默认值
+        </van-col>
+      </van-row>
+      <van-divider :style="{ margin: '0' }"></van-divider>
+      <van-row type="flex" justify="center" class="van-cell">
+        <van-col @click="exportConfigs">导出配置到备份文件
+        </van-col>
+      </van-row>
+      <van-divider :style="{ margin: '0' }"></van-divider>
+      <van-row type="flex" justify="center" class="van-cell">
+        <van-col @click="restoreConfigs">从备份文件中导入配置</van-col>
+      </van-row>
+      <van-divider :style="{ margin: '0' }"></van-divider>
+      <van-row type="flex" justify="center" class="van-cell">
+        <van-col @click="exportRuntimeStorage">导出运行时数据
+        </van-col>
+      </van-row>
+      <van-divider :style="{ margin: '0' }"></van-divider>
+      <van-row type="flex" justify="center" class="van-cell" style="margin-bottom: 2rem;">
+        <van-col @click="restoreRuntimeStorage">从备份文件中导入运行时数据
+        </van-col>
+      </van-row>
+    </van-dialog>
+  </div>
+</body>
+<script type="text/javascript">
+  /** 
+   * 加载本地js文件
+   */ 
+  function appendScripts(filePath) {
+    let element = document.createElement('script')
+    // element.src = 'file://' + filePath + '/vue_configs/js/vue.min.js'
+    // document.head.appendChild(element)
+    let scripts = ['/vue_configs/js/webview_bridge.js', '/vue_configs/js/components/common.js', '/vue_configs/js/components/configuration.js', '/vue_configs/js/app.js']
+    let index = 0
+    scripts.forEach(script => {
+      setTimeout(function () {
+        element = document.createElement('script')
+        element.src = filePath + script
+        document.head.appendChild(element)
+      }, 100 + (index++) * 10)
+    })
+    console.log('append scripts done')
+    let csses = ['/vue_configs/css/style.css']
+    csses.forEach(css => {
+      element = document.createElement('link')
+      element.href = filePath + css
+      element.rel = "stylesheet"
+      document.head.appendChild(element)
+    })
+    console.log('append css done')
+  }
+
+  // 挂载本地js脚本
+  window.onload = () => {
+    let location = window.location.href
+    appendScripts(location.substring(0, location.indexOf('/vue_configs/index.html')))
+  }
+  /**
+   * 禁用长按菜单，复制等 
+   **/
+  window.addEventListener('contextmenu', function (e) {
+    e.preventDefault()
+  })
+</script>
+
+</html>

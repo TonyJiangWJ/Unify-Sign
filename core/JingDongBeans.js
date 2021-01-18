@@ -1,0 +1,144 @@
+
+let { config } = require('../config.js')(runtime, this)
+let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)
+
+let WidgetUtils = singletonRequire('WidgetUtils')
+let automator = singletonRequire('Automator')
+let commonFunctions = singletonRequire('CommonFunction')
+let FloatyInstance = singletonRequire('FloatyUtil')
+
+let BaseSignRunner = require('./BaseSignRunner.js')
+function BeanCollector () {
+  BaseSignRunner.call(this)
+  const _package_name = 'com.jingdong.app.mall'
+
+  /***********************
+   * 综合操作
+   ***********************/
+
+  // 进入京东app
+  const startApp = function () {
+    logInfo('启动京东应用')
+    launch(_package_name)
+    sleep(1000)
+  }
+
+  const waitingAndGet = function (val, t, containType) {
+    WidgetUtils.widgetWaiting(val, null, t)
+    return WidgetUtils.widgetGetOne(val, t, containType)
+  }
+
+  /**
+   * 尝试进入
+   * 
+   * @param {object} preAction 前一个点击的操作目标
+   * @param {string} targetContent 校验需要等待的文本
+   */
+  const tryEnter = function (preAction, targetContent) {
+    let retry = 0
+    let target = waitingAndGet(targetContent)
+    while (target === null && preAction !== null && retry++ <= 5) {
+      automator.clickCenter(preAction)
+      sleep(500)
+      target = waitingAndGet(targetContent)
+    }
+    if (target === null) {
+      errorInfo(['查找「{}」失败', targetContent], true)
+      FloatyInstance.setFloatyInfo({
+        x: 500, y: 500
+      }, '查找' + targetContent + '失败')
+      sleep(1000)
+      if (preAction === null) {
+        errorInfo('前置操作失败！！！')
+        FloatyInstance.setFloatyInfo({
+          x: 500, y: 500
+        }, '前置操作失败！！！')
+        sleep(1000)
+      }
+    } else {
+      infoLog(['查找「{}」成功', targetContent], true)
+      FloatyInstance.setFloatyInfo({
+        x: target.bounds().centerX(),
+        y: target.bounds().centerY()
+      }, '查找' + targetContent + '成功')
+      sleep(1000)
+      automator.clickCenter(target)
+    }
+    return target
+  }
+
+  this.execCollectBean = function () {
+    let homePageCollectWidget = WidgetUtils.widgetGetOne('领京豆')
+    let beans = null
+    if (homePageCollectWidget) {
+      FloatyInstance.setFloatyInfo({
+        x: homePageCollectWidget.bounds().centerX(),
+        y: homePageCollectWidget.bounds().centerY()
+      }, '查找领京豆成功')
+      sleep(1000)
+      automator.clickCenter(homePageCollectWidget)
+      beans = homePageCollectWidget
+    } else {
+      FloatyInstance.setFloatyInfo({
+        x: 500,
+        y: 500
+      }, '查找领京豆失败，准备点击 我的')
+      sleep(1000)
+      let mine = WidgetUtils.widgetGetOne('我的')
+      if (mine) {
+        automator.clickCenter(mine)
+        sleep(2000)
+      }
+      let toCollect = tryEnter(mine, '京豆')
+      if (toCollect) {
+        beans = tryEnter(toCollect, '去签到领京豆|已签到')
+        let content = beans.desc() || beans.text()
+        if (content === '已签到') {
+          this.setExecuted()
+          FloatyInstance.setFloatyInfo({
+            x: beans.bounds().centerX(),
+            y: beans.bounds().centerY()
+          }, '今日已完成签到')
+          sleep(1000)
+          return
+        }
+      }
+    }
+    if (beans) {
+      let doCollect = tryEnter(beans, '签到领京豆|已连续签到')
+      let content = doCollect.desc() || doCollect.text()
+      if (content === '已连续签到') {
+        this.setExecuted()
+        FloatyInstance.setFloatyInfo({
+          x: doCollect.bounds().centerX(),
+          y: doCollect.bounds().centerY()
+        }, '今日已完成签到')
+        sleep(1000)
+        return
+      }
+      FloatyInstance.setFloatyInfo({
+        x: doCollect.bounds().centerX(),
+        y: doCollect.bounds().centerY()
+      }, '完成签到')
+      sleep(1000)
+      automator.clickCenter(doCollect)
+      this.setExecuted()
+    } else {
+      FloatyInstance.setFloatyInfo({
+        x: 500, y: 500
+      }, '无法找到指定控件，签到失败')
+      sleep(2000)
+    }
+  }
+
+  this.exec = function () {
+    startApp()
+    this.awaitAndSkip()
+    this.execCollectBean()
+    commonFunctions.minimize(_package_name)
+  }
+}
+BeanCollector.prototype = Object.create(BaseSignRunner.prototype)
+BeanCollector.prototype.constructor = BeanCollector
+
+module.exports = new BeanCollector()

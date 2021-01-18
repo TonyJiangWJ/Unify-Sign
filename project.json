@@ -1,0 +1,10 @@
+{
+    "name": "聚合签到",
+    "main": "main.js",
+    "ignore": [
+        "build"
+    ],
+    "packageName": "com.tony.unify.sign",
+    "versionName": "1.0.0",
+    "versionCode": 1
+}
