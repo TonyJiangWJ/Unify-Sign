@@ -13,8 +13,8 @@ function SignRunner () {
     launch(_package_name)
     sleep(1000)
     this.awaitAndSkip()
-    let closeButton = widgetUtils.widgetGetById('com.x2era.xcloud.app:id/iv_close', 4000)
-    if (closeButton) {
+    let closeButton = widgetUtils.widgetGetById('com.x2era.xcloud.app:id/iv_(close|cancel)', 4000)
+    while (!!closeButton) {
       FloatyInstance.setFloatyInfo({
         x: closeButton.bounds().centerX(),
         y: closeButton.bounds().centerY()
@@ -22,12 +22,8 @@ function SignRunner () {
       sleep(500)
       FloatyInstance.setFloatyText('点击关闭')
       automator.clickCenter(closeButton)
-    } else {
-      FloatyInstance.setFloatyInfo({
-        x: 500,
-        y: 1000
-      }, '未找到关闭按钮')
       sleep(500)
+      closeButton = widgetUtils.widgetGetById('com.x2era.xcloud.app:id/iv_(close|cancel)', 1000)
     }
     let signButton = widgetUtils.widgetGetOne('签到')
     if (signButton) {
@@ -58,10 +54,14 @@ function SignRunner () {
           sleep(500)
           automator.clickCenter(doSignButton)
           let regex = /恭喜您获得(\d+)个发米粒/
-          let success = widgetUtils.widgetGetOne(regex)
-          if (success) {
-            let result = regex.exec(success.text())
-            infoLog(['签到成功，共获得{}个米粒', result[1]])
+          let success = widgetUtils.alternativeWidget(regex, '签到成功', null, true)
+          if (success.value > 0) {
+            if (success.value === 1) {
+              let result = regex.exec(success.content)
+              infoLog(['签到成功，共获得{}个米粒', result[1]])
+            } else {
+              infoLog('签到成功，今日签到没有米粒')
+            }
             FloatyInstance.setFloatyText('签到成功')
           } else {
             FloatyInstance.setFloatyText('未获取到签到成功信息，可能已经签到过了')

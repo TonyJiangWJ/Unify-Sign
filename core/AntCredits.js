@@ -38,14 +38,7 @@ function CreditRunner () {
     FloatyInstance.setFloatyText('校验是否有打开确认弹框')
     let confirm = widgetUtils.widgetGetOne(/^打开$/, 3000)
     if (confirm) {
-      sleep(500)
-      FloatyInstance.setFloatyInfo(
-        {
-          x: confirm.bounds().centerX(),
-          y: confirm.bounds().centerY()
-        },
-        '找到了确认打开按钮')
-      automator.clickCenter(confirm)
+      this.displayButtonAndClick(confirm, '找到了打开按钮')
     } else {
       FloatyInstance.setFloatyText('没有打开确认弹框')
     }
@@ -106,25 +99,10 @@ function CreditRunner () {
     FloatyInstance.setFloatyText('等待会员积分控件')
     let target = widgetUtils.widgetGetOne(/^\s*今日签到.*(\d+)$/)
     if (target) {
-      FloatyInstance.setFloatyInfo(
-        {
-          x: target.bounds().centerX(),
-          y: target.bounds().centerY()
-        },
-        '等待会员积分控件成功，准备进入签到页面'
-      )
-      automator.clickCenter(target)
-      sleep(1000)
-      target = widgetUtils.widgetGetOne('明天签到')
+      this.displayButtonAndClick(target, '等待会员积分控件成功，准备进入签到页面')
+      target = widgetUtils.widgetGetOne('.*明天签到.*')
       if (target) {
-        FloatyInstance.setFloatyInfo(
-          {
-            x: target.bounds().centerX(),
-            y: target.bounds().centerY()
-          },
-          '进入签到页面成功'
-        )
-        sleep(500)
+        this.displayButtonAndClick(target, '进入签到页面成功')
         automator.back()
       }
     } else {
@@ -138,14 +116,7 @@ function CreditRunner () {
     // 今日支付积分
     target = widgetUtils.widgetGetOne('全部领取')
     if (target) {
-      FloatyInstance.setFloatyInfo(
-        {
-          x: target.bounds().centerX(),
-          y: target.bounds().centerY()
-        },
-        '找到了支付积分，准备收取'
-      )
-      automator.clickCenter(target)
+      this.displayButtonAndClick(target, '找到了支付积分，准备收取')
     } else {
       FloatyInstance.setFloatyTextColor('#ff0000')
       FloatyInstance.setFloatyText('未找到今日支付积分')
@@ -160,14 +131,7 @@ function CreditRunner () {
     let target = widgetUtils.widgetGetOne(/家庭积分.*\d+|家庭积分待领取/)
     sleep(200)
     if (target) {
-      FloatyInstance.setFloatyInfo(
-        {
-          x: target.bounds().centerX(),
-          y: target.bounds().centerY()
-        },
-        '家庭积分'
-      )
-      automator.clickCenter(target)
+      this.displayButtonAndClick(target, '家庭积分')
       if (widgetUtils.widgetWaiting('.*家庭共享积分.*', limit === 0 ? 2000 : null)) {
         FloatyInstance.setFloatyText('进入家庭积分页面成功，等待3秒福袋动画结束')
         sleep(2000)

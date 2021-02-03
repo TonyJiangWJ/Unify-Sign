@@ -83,7 +83,7 @@ let default_config = {
     {
       name: '淘金币签到',
       script: 'Taobao-Coin.js',
-      enabled: false
+      enabled: true
     }
   ]
 }
@@ -95,7 +95,18 @@ let storageConfig = storages.create(CONFIG_STORAGE_NAME)
 Object.keys(default_config).forEach(key => {
   let storedVal = storageConfig.get(key)
   if (typeof storedVal !== 'undefined') {
-    config[key] = storedVal
+    if (key === 'supported_signs') {
+      let stored = JSON.parse(JSON.stringify(storageConfig.get(key)))
+      config[key] = default_config[key]
+      config[key].forEach(sign => {
+        let match = stored.filter(s => s.name === sign.name)
+        if (match && match.length > 0) {
+          sign.enabled = match[0].enabled
+        }
+      })
+    } else {
+      config[key] = storedVal
+    }
   } else {
     config[key] = default_config[key]
   }

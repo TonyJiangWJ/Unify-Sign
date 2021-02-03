@@ -2,6 +2,7 @@ let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)
 let commonFunctions = singletonRequire('CommonFunction')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
+let automator = singletonRequire('Automator')
 
 function BaseSignRunner () {
   this.name = ''
@@ -40,17 +41,42 @@ function BaseSignRunner () {
    * 等待跳过按钮并点击
    */
   this.awaitAndSkip = function () {
-    let skip = WidgetUtils.widgetGetOne('跳过', 3000)
+    let skip = WidgetUtils.widgetGetOne('.*跳过.*', 3000)
     if (skip !== null) {
       automator.clickCenter(skip)
       sleep(1000)
     }
   }
 
+  this.displayButtonAndClick = function (button, desc, delay) {
+    if (button) {
+      FloatyInstance.setFloatyInfo(
+        {
+          x: button.bounds().centerX(),
+          y: button.bounds().centerY()
+        },
+        desc)
+      sleep(delay || 1000)
+      automator.clickCenter(button)
+    }
+  }
+
+  this.displayButton = function (button, desc, delay) {
+    if (button) {
+      FloatyInstance.setFloatyInfo(
+        {
+          x: button.bounds().centerX(),
+          y: button.bounds().centerY()
+        },
+        desc)
+      sleep(delay || 1000)
+    }
+  }
+
   /**
    * abstract funcs
    */
-  this.exec = () => {}
+  this.exec = () => { }
 }
 
 module.exports = BaseSignRunner
