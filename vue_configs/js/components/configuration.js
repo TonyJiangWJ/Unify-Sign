@@ -114,7 +114,7 @@ Vue.component('sample-configs', function (resolve, reject) {
       <van-cell-group>\
         <van-field v-model="configs.password" label="锁屏密码" type="password" placeholder="请输入锁屏密码" input-align="right" />\
         <number-field v-model="configs.timeout_unlock" label="解锁超时时间" placeholder="请输入解锁超时时间" >\
-          <span slot="right-icon">毫秒</span>\
+          <template #right-icon><span>毫秒</span></template>\
         </number-field>\
         <switch-cell title="锁屏启动设置最低亮度" v-model="configs.auto_set_brightness" />\
         <switch-cell title="锁屏启动关闭弹窗提示" v-model="configs.dismiss_dialog_if_locked" />\
@@ -142,8 +142,9 @@ Vue.component('sample-configs', function (resolve, reject) {
       </van-cell-group>\
       <van-divider content-position="left">执行配置</van-divider>\
       <van-cell-group>\
+        <tip-block>对话框的倒计时时间，如果设置成0则不显示对话框</tip-block>\
         <number-field v-model="configs.delayStartTime" label="延迟启动时间" label-width="10em" placeholder="请输入延迟启动时间">\
-          <span slot="right-icon">秒</span>\
+          <template #right-icon><span>秒</span></template>\
         </number-field>\
         <switch-cell title="是否自动授权截图权限" v-model="configs.request_capture_permission" />\
         <van-field v-if="configs.request_capture_permission" v-model="configs.capture_permission_button" label="确定按钮文本" type="text" placeholder="请输入确定按钮文本" input-align="right" />\
@@ -151,14 +152,14 @@ Vue.component('sample-configs', function (resolve, reject) {
           失败多次后脚本会自动重启，重新获取截图权限</tip-block>\
         <switch-cell title="是否异步等待截图" v-model="configs.async_waiting_capture" />\
         <number-field v-if="configs.async_waiting_capture" v-model="configs.capture_waiting_time" label="获取截图超时时间" label-width="8em" placeholder="请输入超时时间">\
-          <span slot="right-icon">毫秒</span>\
+          <template #right-icon><span>毫秒</span></template>\
         </number-field>\
         <switch-cell center title="是否通话时暂停脚本" title-style="width: 10em;flex:2;" label="需要授权AutoJS获取通话状态，Pro版暂时无法使用" v-model="configs.enable_call_state_control" />\
         <number-field v-model="configs.timeout_findOne" label="查找控件超时时间" label-width="8em" placeholder="请输入超时时间" >\
-          <span slot="right-icon">毫秒</span>\
+          <template #right-icon><span>毫秒</span></template>\
         </number-field>\
         <number-field v-model="configs.timeout_existing" label="校验控件是否存在超时时间" label-width="12em" placeholder="请输入超时时间">\
-          <span slot="right-icon">毫秒</span>\
+          <template #right-icon><span>毫秒</span></template>\
         </number-field>\
       </van-cell-group>\
       <van-divider content-position="left">日志配置</van-divider>\
@@ -167,7 +168,7 @@ Vue.component('sample-configs', function (resolve, reject) {
         <switch-cell title="是否显示脚本引擎id" v-model="configs.show_engine_id" />\
         <switch-cell title="是否保存日志到文件" v-model="configs.save_log_file" />\
         <number-field v-if="configs.save_log_file" v-model="configs.back_size" label="日志文件滚动大小" label-width="8em" placeholder="请输入单个文件最大大小">\
-          <span slot="right-icon">KB</span>\
+          <template #right-icon><span>KB</span></template>\
         </number-field>\
         <switch-cell title="是否异步保存日志到文件" v-model="configs.async_save_log_file" />\
       </van-cell-group>\
@@ -216,7 +217,8 @@ Vue.component('advance-configs', function (resolve, reject) {
             },
             {
               name: '京东签到',
-              script: 'JingDongBeans.js'
+              script: 'JingDongBeans.js',
+              enabled: false
             },
             {
               name: '米游社-原神签到',
@@ -242,6 +244,7 @@ Vue.component('advance-configs', function (resolve, reject) {
               this.configs.skip_running_packages = []
             }
           }
+          this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.name)
           this.mounted = true
         })
       },
@@ -305,7 +308,6 @@ Vue.component('advance-configs', function (resolve, reject) {
     mounted () {
       $app.registerFunction('saveAdvanceConfigs', this.saveConfigs)
       $app.registerFunction('reloadAdvanceConfigs', this.loadConfigs)
-      this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.name)
       // this.loadConfigs()
     },
     template: '<div>\
