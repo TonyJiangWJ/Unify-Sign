@@ -41,11 +41,14 @@ function BaseSignRunner () {
    * 等待跳过按钮并点击
    */
   this.awaitAndSkip = function () {
-    let skip = WidgetUtils.widgetGetOne('.*跳过.*', 3000)
-    if (skip !== null) {
-      automator.clickCenter(skip)
-      sleep(1000)
-    }
+    let checkingList = ['.*跳过.*', '.*下次再说.*']
+    checkingList.forEach(checkContent => {
+      let skip = WidgetUtils.widgetGetOne(checkContent, 3000)
+      if (skip !== null) {
+        automator.clickCenter(skip)
+        sleep(1000)
+      }
+    })
   }
 
   this.displayButtonAndClick = function (button, desc, delay) {

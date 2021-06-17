@@ -23,6 +23,7 @@ Vue.component('sample-configs', function (resolve, reject) {
           save_log_file: false,
           back_size: '',
           async_save_log_file: false,
+          console_log_maximum_size: 1500,
           delayStartTime: 5,
           request_capture_permission: true,
           capture_permission_button: 'START NOW|立即开始|允许',
@@ -32,6 +33,7 @@ Vue.component('sample-configs', function (resolve, reject) {
           check_device_posture: false,
           check_distance: false,
           posture_threshold_z: 6,
+          battery_keep_threshold: 20,
           auto_lock: false,
           hasRootPermission: false,
           lock_x: 150,
@@ -43,7 +45,9 @@ Vue.component('sample-configs', function (resolve, reject) {
           capture_waiting_time: 500,
           develop_mode: false,
           develop_saving_mode: false,
-          enable_visual_helper: false
+          enable_visual_helper: false,
+          auto_check_update: true,
+          is_pro: false,
         },
         device: {
           pos_x: 0,
@@ -131,6 +135,8 @@ Vue.component('sample-configs', function (resolve, reject) {
           <number-field v-model="configs.lock_x" label="横坐标位置" placeholder="请输入横坐标位置"/>\
           <number-field v-model="configs.lock_y" label="纵坐标位置" placeholder="请输入纵坐标位置"/>\
         </template>\
+        <tip-block>设置脚本运行的最低电量(充电时不受限制)，防止早晨低电量持续运行导致自动关机，发生意外情况，比如闹钟歇菜导致上班迟到等情况。如不需要设置为0即可</tip-block>\
+        <number-field v-model="configs.battery_keep_threshold" label="脚本可运行的最低电量" label-width="12em" placeholder="请输入最低电量" />\
       </van-cell-group>\
       <van-divider content-position="left">悬浮窗配置</van-divider>\
       <van-cell-group>\
@@ -164,6 +170,8 @@ Vue.component('sample-configs', function (resolve, reject) {
       </van-cell-group>\
       <van-divider content-position="left">日志配置</van-divider>\
       <van-cell-group>\
+        <tip-block v-if="!configs.is_pro">控制台保留的日志行数，避免运行时间长后保留太多的无用日志，导致内存浪费</tip-block>\
+        <number-field v-if="!configs.is_pro" v-model="configs.console_log_maximum_size" label="控制台日志最大保留行数" label-width="12em" />\
         <switch-cell title="是否显示debug日志" v-model="configs.show_debug_log" />\
         <switch-cell title="是否显示脚本引擎id" v-model="configs.show_engine_id" />\
         <switch-cell title="是否保存日志到文件" v-model="configs.save_log_file" />\
@@ -172,6 +180,7 @@ Vue.component('sample-configs', function (resolve, reject) {
         </number-field>\
         <switch-cell title="是否异步保存日志到文件" v-model="configs.async_save_log_file" />\
       </van-cell-group>\
+      <switch-cell title="是否自动检测更新" v-model="configs.auto_check_update" />\
       <van-divider content-position="left">开发模式配置</van-divider>\
       <van-cell-group>\
         <switch-cell title="是否启用开发模式" v-model="configs.develop_mode" />\
@@ -203,6 +212,8 @@ Vue.component('advance-configs', function (resolve, reject) {
           useCustomScrollDown: true,
           scrollDownSpeed: 200,
           bottomHeight: 200,
+          warn_skipped_ignore_package: false,
+          warn_skipped_too_much: false,
           skip_running_packages: [{ packageName: 'com.tony.test', appName: 'test' }, { packageName: 'com.tony.test2', appName: 'test2' }],
           supported_signs: [
             {
@@ -246,6 +257,14 @@ Vue.component('advance-configs', function (resolve, reject) {
           }
           this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.name)
           this.mounted = true
+          let self = this
+          this.configs.supported_signs.forEach((sign, idx) => {
+            $nativeApi.request('checkExecuted', { name: sign.name }).then(resp => {
+              sign.executedInfo = resp.success ? '今日已执行 ' + resp.executedTime : '未执行'
+              console.log(sign.name + ' 执行状态：' + sign.executedInfo)
+              self.$set(self.configs.supported_signs, idx, sign)
+            })
+          })
         })
       },
       saveConfigs: function () {
@@ -284,9 +303,35 @@ Vue.component('advance-configs', function (resolve, reject) {
         this.newSkipRunningAppName = payload.appName
         this.newSkipRunningPackage = payload.packageName
       },
-      toggle(index) {
+      toggle (index) {
         this.$refs.checkboxes[index].toggle()
       },
+      toggleExecuted (name) {
+        let self = this
+        let idx = this.configs.supported_signs.map(sign => sign.name).indexOf(name)
+        if (idx > -1) {
+          let sign = this.configs.supported_signs[idx]
+          let targetExecutedStatus = false
+          if (!sign.executedInfo || sign.executedInfo === '未执行') {
+            targetExecutedStatus = true
+          }
+          this.$dialog.confirm({
+            message: `确定要将${name}标记为${targetExecutedStatus ? '已执行' : '未执行'}吗？`
+          }).then(() => {
+            let resolver = resp => {
+              sign.executedInfo = resp.success ? '今日已执行 ' + resp.executedTime : '未执行'
+              self.$set(self.configs.supported_signs, idx, sign)
+            }
+            if (targetExecutedStatus) {
+              sign.executedInfo = '今日已执行'
+              $nativeApi.request('setExecuted', { name: name }).then(resolver)
+            } else {
+              sign.executedInfo = '未执行'
+              $nativeApi.request('markNotExecuted', { name: name }).then(resolver)
+            }
+          })
+        }
+      }
     },
     computed: {
       addedSkipPackageNames: function () {
@@ -336,17 +381,25 @@ Vue.component('advance-configs', function (resolve, reject) {
           </template>\
         </van-swipe-cell>\
         </div>\
+        <switch-cell title="当前台白名单跳过次数过多时提醒" label="当白名单跳过3次之后会toast提醒，按音量下可以直接执行" title-style="width: 12em;flex:2;" v-model="configs.warn_skipped_too_much" />\
+        <switch-cell v-if="configs.warn_skipped_too_much" title="是否无视前台包名" title-style="width: 10em;flex:2;" label="默认情况下包名相同且重复多次时才提醒" v-model="configs.warn_skipped_ignore_package" />\
       </van-cell-group>\
       <van-divider content-position="left">\
         设置启用的签到\
       </van-divider>\
       <van-checkbox-group v-model="checked">\
         <van-cell-group>\
-          <van-cell clickable v-for="(supportedSign,index) in configs.supported_signs" :key="supportedSign.name" :title="supportedSign.name" @click="toggle(index)">\
-            <template #right-icon>\
-              <van-checkbox :name="supportedSign.name" ref="checkboxes" />\
+          <van-swipe-cell v-for="(supportedSign,index) in configs.supported_signs" :key="supportedSign.name" stop-propagation>\
+            <van-cell clickable \
+              :title="supportedSign.name" @click="toggle(index)" :label="supportedSign.executedInfo">\
+              <template #right-icon>\
+                <van-checkbox :name="supportedSign.name" ref="checkboxes" />\
+              </template>\
+            </van-cell>\
+            <template #right>\
+              <van-button square type="danger" text="切换执行状态" @click="toggleExecuted(supportedSign.name)" style="height: 100%"/>\
             </template>\
-          </van-cell>\
+          </van-swipe-cell>\
         </van-cell-group>\
       </van-checkbox-group>\
       <van-dialog v-model="showAddSkipRunningDialog" show-cancel-button @confirm="doAddSkipPackage" :get-container="getContainer">\

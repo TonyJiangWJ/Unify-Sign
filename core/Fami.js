@@ -66,6 +66,17 @@ function SignRunner () {
           } else {
             FloatyInstance.setFloatyText('未获取到签到成功信息，可能已经签到过了')
           }
+          closeButton = widgetUtils.widgetGetById('com.x2era.xcloud.app:id/iv_(close|cancel)', 3000)
+          if (closeButton) {
+            FloatyInstance.setFloatyInfo({
+              x: closeButton.bounds().centerX(),
+              y: closeButton.bounds().centerY()
+            }, '找到了关闭按钮')
+            sleep(500)
+            FloatyInstance.setFloatyText('点击关闭')
+            sleep(500)
+            automator.clickCenter(closeButton)
+          }
           this.setExecuted()
         } else {
           FloatyInstance.setFloatyText('未找到签到按钮')  

@@ -100,7 +100,7 @@ function BeanCollector () {
             y: beans.bounds().centerY()
           }, '今日已完成签到')
           sleep(1000)
-          return
+          return true
         }
       }
     }
@@ -114,7 +114,7 @@ function BeanCollector () {
           y: doCollect.bounds().centerY()
         }, '今日已完成签到')
         sleep(1000)
-        return
+        return true
       }
       FloatyInstance.setFloatyInfo({
         x: doCollect.bounds().centerX(),
@@ -123,18 +123,26 @@ function BeanCollector () {
       sleep(1000)
       automator.clickCenter(doCollect)
       this.setExecuted()
+      return true
     } else {
       FloatyInstance.setFloatyInfo({
         x: 500, y: 500
       }, '无法找到指定控件，签到失败')
       sleep(2000)
+      return false
     }
   }
 
   this.exec = function () {
     startApp()
     this.awaitAndSkip()
-    this.execCollectBean()
+    if (!this.execCollectBean()) {
+      FloatyInstance.setFloatyText('关闭并重新打开京东APP，只支持MIUI手势')
+      commonFunctions.killCurrentApp()
+      sleep(3000)
+      this.exec()
+      return
+    }
     commonFunctions.minimize(_package_name)
   }
 }

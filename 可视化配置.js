@@ -3,7 +3,6 @@
 const prepareWebView = require('./lib/PrepareWebView.js')
 importClass(android.view.View)
 importClass(android.view.WindowManager)
-
 // ---修改状态栏颜色 start--
 // clear FLAG_TRANSLUCENT_STATUS flag:
 activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
@@ -192,7 +191,7 @@ let bridgeHandler = {
             let encrypt_content = files.read(runtime_store_path)
             let resetRuntimeStore = function (runtimeStorageStr) {
               if (commonFunctions.importRuntimeStorage(runtimeStorageStr)) {
-              toastLog('导入运行配置成功')
+                toastLog('导入运行配置成功')
                 return true
               }
               toastLog('导入运行配置失败，无法读取正确信息')
@@ -231,6 +230,22 @@ let bridgeHandler = {
   callback: (data, callbackId) => {
     log('callback param:' + JSON.stringify(data))
     postMessageToWebView({ callbackId: callbackId, data: { message: 'hello,' + callbackId } })
+  },
+  checkExecuted: (data, callbackId) => {
+    let name = data.name
+    let executedInfo = commonFunctions.getExecutedInfo(name)
+    log(name + " executedInfo: " + JSON.stringify(executedInfo))
+    postMessageToWebView({ callbackId: callbackId, data: executedInfo })
+  },
+  setExecuted: (data, callbackId) => {
+    let name = data.name
+    commonFunctions.setExecutedToday(name)
+    postMessageToWebView({ callbackId: callbackId, data: commonFunctions.getExecutedInfo(name) })
+  },
+  markNotExecuted: (data, callbackId) => {
+    let name = data.name
+    commonFunctions.markNotExecuted(name)
+    postMessageToWebView({ callbackId: callbackId, data: commonFunctions.getExecutedInfo(name) })
   }
 }
 postMessageToWebView = prepareWebView(ui.webview, {
@@ -241,9 +256,6 @@ postMessageToWebView = prepareWebView(ui.webview, {
     registerSensors()
   }
 })
-
-// ---------------------
-
 ui.emitter.on('pause', () => {
   postMessageToWebView({ functionName: 'saveBasicConfigs' })
   postMessageToWebView({ functionName: 'saveAdvanceConfigs' })
@@ -252,6 +264,11 @@ ui.emitter.on('pause', () => {
 
 let timeout = null
 ui.emitter.on('back_pressed', (e) => {
+  if (ui.webview.canGoBack()) {
+    ui.webview.goBack()
+    e.consumed = true
+    return
+  }
   // toastLog('触发了返回')
   if (timeout == null || timeout < new Date().getTime()) {
     e.consumed = true
@@ -262,6 +279,7 @@ ui.emitter.on('back_pressed', (e) => {
     toastLog('再见~')
   }
 })
+
 
 let gravitySensor = null
 let distanceSensor = null

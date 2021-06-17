@@ -12,6 +12,9 @@ let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
 let { logInfo, errorInfo, warnInfo, debugInfo, infoLog, debugForDev, flushAllLogs } = singletonRequire('LogUtils')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let commonFunctions = singletonRequire('CommonFunction')
+// 随机延迟启动
+commonFunctions.setRandomStartedIfNeeded()
+commonFunctions.delayIfBatteryLow()
 let callStateListener = !config.is_pro && config.enable_call_state_control ? singletonRequire('CallStateListener') : { exitIfNotIdle: () => { } }
 // 用于代理图片资源，请勿移除 否则需要手动添加recycle代码
 let resourceMonitor = require('./lib/ResourceMonitor.js')(runtime, this)
@@ -34,7 +37,7 @@ commonFunctions.registerOnEngineRemoved(function () {
   resolver()
   flushAllLogs()
   // 针对免费版内存主动释放，Pro版不需要
-  !config.is_pro && console.clear()
+  commonFunctions.reduceConsoleLogs()
   // 移除运行中任务
   runningQueueDispatcher.removeRunningTask(true, true,
     () => {

@@ -52,8 +52,13 @@ if (is_pro) {
      * @return
      */
     getString: function (jsonString, name) {
-      let v = JSON.parse(jsonString)[name]
-      return v ? v.toString() : ''
+      if (arguments.length === 2) {
+        let v = JSON.parse(jsonString)[name]
+        return v ? v.toString() : ''
+      } else {
+        let v = origin[arguments[0]]
+        return v ? v.toString() : ''
+      }
     },
 
     /**
@@ -81,8 +86,15 @@ if (is_pro) {
     },
 
     getString: function (name) {
-      let v = origin[name]
-      return v ? v.toString() : ''
+      if (arguments.length === 2) {
+        let jsonString = arguments[0]
+        name = arguments[1]
+        let v = JSON.parse(jsonString)[name]
+        return v ? v.toString() : ''
+      } else {
+        let v = origin[name]
+        return v ? v.toString() : ''
+      }
     },
 
     getObject: function (name) {
