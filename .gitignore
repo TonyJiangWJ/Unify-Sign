@@ -4,3 +4,4 @@
 *.ign.js
 LockScreen.js
 ExternalUnlockDevice.js
+.lh/
