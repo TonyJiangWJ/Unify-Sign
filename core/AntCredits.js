@@ -100,7 +100,7 @@ function CreditRunner () {
     let target = widgetUtils.widgetGetOne(/^\s*今日签到.*(\d+)$/)
     if (target) {
       this.displayButtonAndClick(target, '等待会员积分控件成功，准备进入签到页面')
-      target = widgetUtils.widgetGetOne('.*明天签到.*')
+      target = widgetUtils.widgetGetOne('.*已连续签到.*')
       if (target) {
         this.displayButtonAndClick(target, '进入签到页面成功')
         automator.back()

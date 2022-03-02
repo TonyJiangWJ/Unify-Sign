@@ -1,266 +1,118 @@
+/*
+ * @Author: TonyJiangWJ
+ * @Date: 2020-11-29 11:28:15
+ * @Last Modified by: TonyJiangWJ
+ * @Last Modified time: 2020-12-30 20:00:45
+ * @Description: 
+ */
 "ui";
-
 const prepareWebView = require('./lib/PrepareWebView.js')
 importClass(android.view.View)
 importClass(android.view.WindowManager)
+
 // ---修改状态栏颜色 start--
 // clear FLAG_TRANSLUCENT_STATUS flag:
-activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
 // add FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS flag to the window
 activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS)
 activity.getWindow().setStatusBarColor(android.R.color.white)
 activity.getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR)
 // ---修改状态栏颜色 end--
 
-let singletonRequire = require('./lib/SingletonRequirer.js')(runtime, this)
+let { config } = require('./config.js')(runtime, global)
+let singletonRequire = require('./lib/SingletonRequirer.js')(runtime, global)
 let FileUtils = singletonRequire('FileUtils')
-let AesUtil = require('./lib/AesUtil.js')
-let { config, default_config, storage_name } = require('./config.js')(runtime, this)
-let commonFunctions = singletonRequire('CommonFunction')
+
 config.hasRootPermission = files.exists("/sbin/su") || files.exists("/system/xbin/su") || files.exists("/system/bin/su")
 if (config.device_width < 10 || config.device_height < 10) {
   toastLog('设备分辨率信息不正确，可能无法正常运行脚本, 请先运行一遍main.js以便自动获取分辨率')
   exit()
 }
-let local_config_path = files.cwd() + '/local_config.cfg'
-let runtime_store_path = files.cwd() + '/runtime_store.cfg'
-let aesKey = device.getAndroidId()
+
 ui.layout(
   <vertical>
-    <webview id="webview" margin="0 10" />
+    <webview id="loadingWebview" margin="0 0" />
+    <webview id="webview" margin="0 0" />
   </vertical>
 )
 let mainScriptPath = FileUtils.getRealMainScriptPath(true)
 let indexFilePath = "file://" + mainScriptPath + "/vue_configs/index.html"
+let loadingFilePath = "file://" + mainScriptPath + "/vue_configs/loading.html"
+let errorFilePath = "file://" + mainScriptPath + "/vue_configs/error.html"
+
 let postMessageToWebView = () => { console.error('function not ready') }
 
-let storageConfig = storages.create(storage_name)
-
-let bridgeHandler = {
-  toast: data => {
-    toast(data.message)
-  },
-  toastLog: data => {
-    toastLog(data.message)
-  },
-  loadConfigs: (data, callbackId) => {
-    postMessageToWebView({ callbackId: callbackId, data: config })
-  },
-  saveConfigs: data => {
-    let newVal = undefined
-    Object.keys(data).forEach(key => {
-      newVal = data[key]
-      if (typeof newVal !== 'undefined') {
-        storageConfig.put(key, newVal)
-        config[key] = newVal
-      }
-    })
-    sendConfigChangedBroadcast(data)
-  },
-  // 加载已安装的应用
-  loadInstalledPackages: (data, callbackId) => {
-    let pm = context.getPackageManager()
-    // Return a List of all packages that are installed on the device.
-    let packages = pm.getInstalledPackages(0)
-    let installedPackage = []
-    for (let i = 0; i < packages.size(); i++) {
-      let packageInfo = packages.get(i)
-      // 判断系统/非系统应用
-      if ((packageInfo.applicationInfo.flags & android.content.pm.ApplicationInfo.FLAG_SYSTEM) == 0) {
-        // 非系统应用
-        let appInfo = pm.getApplicationInfo(packageInfo.packageName, android.content.pm.PackageManager.GET_META_DATA)
-        let appName = appInfo.loadLabel(pm) + ""
-        installedPackage.push({ packageName: packageInfo.packageName, appName: appName })
-      } else {
-        // 系统应用
-        // console.verbose("system packageInfo: " + packageInfo.packageName)
-      }
-    }
-    postMessageToWebView({ callbackId: callbackId, data: installedPackage })
-  },
-  // 重置配置为默认
-  resetConfigs: (data, callbackId) => {
-    ui.run(function () {
-      confirm('确定要将所有配置重置为默认值吗？').then(ok => {
-        if (ok) {
-          Object.keys(default_config).forEach(key => {
-            let defaultValue = default_config[key]
-            config[key] = defaultValue
-            storageConfig.put(key, defaultValue)
-          })
-          toastLog('重置默认值')
-          postMessageToWebView({ functionName: 'reloadBasicConfigs' })
-          postMessageToWebView({ functionName: 'reloadAdvanceConfigs' })
-          postMessageToWebView({ functionName: 'reloadWidgetConfigs' })
-        }
-      })
-    })
-  },
-  exportConfigs: () => {
-    // 触发重载配置，异步操作 但是应该很快
-    postMessageToWebView({ functionName: 'saveBasicConfigs' })
-    postMessageToWebView({ functionName: 'saveAdvanceConfigs' })
-    postMessageToWebView({ functionName: 'saveWidgetConfigs' })
-    ui.run(function () {
-      confirm('确定要将配置导出到local_config.cfg吗？此操作会覆盖已有的local_config数据').then(ok => {
-        if (ok) {
-          Object.keys(default_config).forEach(key => {
-            console.verbose(key + ': ' + config[key])
-          })
-          try {
-            let configString = AesUtil.encrypt(JSON.stringify(config), aesKey)
-            files.write(local_config_path, configString)
-            toastLog('配置信息导出成功，刷新目录即可，local_config.cfg内容已加密仅本机可用，除非告知秘钥')
-          } catch (e) {
-            toastLog(e)
-          }
-
-        }
-      })
-    })
-  },
-  restoreConfigs: () => {
-    ui.run(function () {
-      confirm('确定要从local_config.cfg中读取配置吗？').then(ok => {
-        if (ok) {
-          try {
-            if (files.exists(local_config_path)) {
-              let refillConfigs = function (configStr) {
-                let local_config = JSON.parse(configStr)
-                Object.keys(default_config).forEach(key => {
-                  let defaultValue = local_config[key]
-                  if (typeof defaultValue === 'undefined') {
-                    defaultValue = default_config[key]
-                  }
-                  config[key] = defaultValue
-                  storageConfig.put(key, defaultValue)
-                })
-                // 触发页面重载
-                postMessageToWebView({ functionName: 'reloadBasicConfigs' })
-                postMessageToWebView({ functionName: 'reloadAdvanceConfigs' })
-                postMessageToWebView({ functionName: 'reloadWidgetConfigs' })
-                toastLog('重新导入配置成功')
-              }
-              let configStr = AesUtil.decrypt(files.read(local_config_path), aesKey)
-              if (!configStr) {
-                toastLog('local_config.cfg解密失败, 请尝试输入秘钥')
-                dialogs.rawInput('请输入秘钥，可通过device.getAndroidId()获取')
-                  .then(key => {
-                    if (key) {
-                      key = key.trim()
-                      configStr = AesUtil.decrypt(files.read(local_config_path), key)
-                      if (configStr) {
-                        refillConfigs(configStr)
-                      } else {
-                        toastLog('秘钥不正确，无法解析')
-                      }
-                    }
-                  })
-              } else {
-                refillConfigs(configStr)
-              }
-            } else {
-              toastLog('local_config.cfg不存在无法导入')
-            }
-          } catch (e) {
-            toastLog(e)
-          }
-        }
-      })
-    })
-  },
-  exportRuntimeStorage: function () {
-    ui.run(function () {
-      confirm('确定要将运行时数据导出到runtime_store.cfg吗？此操作会覆盖已有的数据').then(ok => {
-        if (ok) {
-          try {
-            let runtimeStorageStr = AesUtil.encrypt(commonFunctions.exportRuntimeStorage(), aesKey)
-            files.write(runtime_store_path, runtimeStorageStr)
-          } catch (e) {
-            toastLog(e)
-          }
-        }
-      })
-    })
-  },
-  restoreRuntimeStorage: function () {
-    ui.run(function () {
-      confirm('确定要将从runtime_store.cfg导入运行时数据吗？此操作会覆盖已有的数据').then(ok => {
-        if (ok) {
-          if (files.exists(runtime_store_path)) {
-            let encrypt_content = files.read(runtime_store_path)
-            let resetRuntimeStore = function (runtimeStorageStr) {
-              if (commonFunctions.importRuntimeStorage(runtimeStorageStr)) {
-                toastLog('导入运行配置成功')
-                return true
-              }
-              toastLog('导入运行配置失败，无法读取正确信息')
-              return false
-            }
-            try {
-              let decrypt = AesUtil.decrypt(encrypt_content, aesKey)
-              if (!decrypt) {
-                toastLog('runtime_store.cfg解密失败, 请尝试输入秘钥')
-                dialogs.rawInput('请输入秘钥，可通过device.getAndroidId()获取')
-                  .then(key => {
-                    if (key) {
-                      key = key.trim()
-                      decrypt = AesUtil.decrypt(encrypt_content, key)
-                      if (decrypt) {
-                        resetRuntimeStore(decrypt)
-                      } else {
-                        toastLog('秘钥不正确，无法解析')
-                      }
-                    }
-                  })
-              } else {
-                resetRuntimeStore(decrypt)
-              }
-            } catch (e) {
-              toastLog(e)
-            }
-          } else {
-            toastLog('配置信息不存在，无法导入')
-          }
-        }
-      })
-    })
-  },
-  // 测试回调
-  callback: (data, callbackId) => {
-    log('callback param:' + JSON.stringify(data))
-    postMessageToWebView({ callbackId: callbackId, data: { message: 'hello,' + callbackId } })
-  },
-  checkExecuted: (data, callbackId) => {
-    let name = data.name
-    let executedInfo = commonFunctions.getExecutedInfo(name)
-    log(name + " executedInfo: " + JSON.stringify(executedInfo))
-    postMessageToWebView({ callbackId: callbackId, data: executedInfo })
-  },
-  setExecuted: (data, callbackId) => {
-    let name = data.name
-    commonFunctions.setExecutedToday(name)
-    postMessageToWebView({ callbackId: callbackId, data: commonFunctions.getExecutedInfo(name) })
-  },
-  markNotExecuted: (data, callbackId) => {
-    let name = data.name
-    commonFunctions.markNotExecuted(name)
-    postMessageToWebView({ callbackId: callbackId, data: commonFunctions.getExecutedInfo(name) })
-  }
+ui.webview.setVisibility(View.GONE)
+if (config.clear_webview_cache) {
+  ui.webview.clearCache(true)
+  config.overwrite('clear_webview_cache', false)
 }
+prepareWebView(ui.loadingWebview, {
+  mainScriptPath: mainScriptPath,
+  indexFilePath: loadingFilePath,
+  // 延迟注册
+  bridgeHandler: () => { },
+  onPageFinished: () => {
+    const getLocalVersion = function () {
+      let mainPath = FileUtils.getCurrentWorkPath()
+      let versionFile = files.join(mainPath, 'version.json')
+      let projectFile = files.join(mainPath, 'project.json')
+      let versionName = ''
+      if (files.exists(versionFile)) {
+        versionName = JSON.parse(files.read(versionFile)).version
+      } else if (files.exists(projectFile)) {
+        versionName = JSON.parse(files.read(projectFile)).versionName
+      }
+      return versionName
+    }
+    ui.loadingWebview.loadUrl('javascript:setVersion("' + getLocalVersion() + '")')
+    ui.loadingWebview.loadUrl('javascript:setGithubUrl("' + config.github_url + '")')
+  }
+})
+
+/**/
+let params = ui.loadingWebview.getLayoutParams();
+params.height = config.device_height;
+params.width = config.device_width;
+ui.loadingWebview.setLayoutParams(params);
+let bridgeHandlerBuilder = require('./lib/BridgeHandler.js')
+let loadSuccess = false
+/**/
 postMessageToWebView = prepareWebView(ui.webview, {
   mainScriptPath: mainScriptPath,
   indexFilePath: indexFilePath,
-  bridgeHandler: bridgeHandler,
+  // 延迟注册
+  bridgeHandler: () => bridgeHandlerBuilder(postMessageToWebView),
   onPageFinished: () => {
+    log('页面加载完毕')
     registerSensors()
+    setTimeout(function () {
+      ui.loadingWebview.setVisibility(View.GONE)
+      ui.webview.setVisibility(View.VISIBLE)
+      activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS)
+      log('切换webview')
+      ui.webview.loadUrl('javascript:window.vConsole && window.vConsole.destroy()')
+      loadSuccess = true
+      setTimeout(function () {
+        console.log('loadingWebview height:', ui.loadingWebview.getHeight())
+        console.log('webview height:', ui.webview.getHeight())
+        postMessageToWebView({ functionName: 'resizeWindow', data: { height: ui.loadingWebview.getHeight(), width: ui.webview.getWidth()} })
+      }, 100)
+      ui.loadingWebview.clearView()
+    }, 1000)
   }
 })
-ui.emitter.on('pause', () => {
-  postMessageToWebView({ functionName: 'saveBasicConfigs' })
-  postMessageToWebView({ functionName: 'saveAdvanceConfigs' })
-  postMessageToWebView({ functionName: 'saveWidgetConfigs' })
-})
+
+setTimeout(function () {
+  if (loadSuccess) {
+    return
+  }
+  toastLog('加载资源异常 请重试')
+  ui.loadingWebview.loadUrl(errorFilePath)
+}, 10000)
+
+
+// ---------------------
 
 let timeout = null
 ui.emitter.on('back_pressed', (e) => {
@@ -276,28 +128,24 @@ ui.emitter.on('back_pressed', (e) => {
     // 一秒内再按一次
     timeout = new Date().getTime() + 1000
   } else {
+    sensors.unregisterAll()
     toastLog('再见~')
   }
 })
 
-
 let gravitySensor = null
 let distanceSensor = null
 function registerSensors () {
-  if (!gravitySensor) {
-    gravitySensor = sensors.register('gravity', sensors.delay.ui).on('change', (event, x, y, z) => {
+  gravitySensor = sensors.register('gravity', sensors.delay.ui)
+  if (gravitySensor) {
+    gravitySensor.on('change', (event, x, y, z) => {
       postMessageToWebView({ functionName: 'gravitySensorChange', data: { x: x, y: y, z: z } })
     })
   }
+  distanceSensor = sensors.register('proximity', sensors.delay.ui)
   if (!distanceSensor) {
-    distanceSensor = sensors.register('proximity', sensors.delay.ui).on('change', (event, d) => {
+    distanceSensor.on('change', (event, d) => {
       postMessageToWebView({ functionName: 'distanceSensorChange', data: { distance: d } })
     })
   }
-}
-
-function sendConfigChangedBroadcast (newConfig) {
-  newConfig = newConfig || config
-  console.verbose(engines.myEngine().id + ' 发送广播 通知配置变更')
-  events.broadcast.emit(storage_name + 'config_changed', { config: newConfig, id: engines.myEngine().id })
 }

@@ -38,7 +38,7 @@ function SignRunner () {
       sleep(1000)
       FloatyInstance.setFloatyText('准备查找签到领金币按钮')
 
-      let result = widgetUtils.alternativeWidget('签到领金币', '.*明早7点可领.*', null, true)
+      let result = widgetUtils.alternativeWidget('.*今日签到.*', '.*明早7点可领.*', null, true)
       if (result.value === 1) {
         let signButton = result.target
         if (signButton) {
@@ -123,6 +123,7 @@ function SignRunner () {
       FloatyInstance.setFloatyText('淘金币签到已完成')
       this.executedSuccess = true
     }
+    /*
     if (!this.checkExecuted(this.name + "_town")) {
       FloatyInstance.setFloatyText('准备开始淘金币小镇签到')
       this.launchTown()
@@ -131,6 +132,7 @@ function SignRunner () {
       FloatyInstance.setFloatyText('淘金币小镇签到已完成')
       this.executedSuccess = true
     }
+    */
     commonFunctions.minimize(_package_name)
   }
 }

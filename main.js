@@ -12,6 +12,7 @@ let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
 let { logInfo, errorInfo, warnInfo, debugInfo, infoLog, debugForDev, flushAllLogs } = singletonRequire('LogUtils')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let commonFunctions = singletonRequire('CommonFunction')
+config.not_lingering_float_window = true
 // 随机延迟启动
 commonFunctions.setRandomStartedIfNeeded()
 commonFunctions.delayIfBatteryLow()
@@ -28,6 +29,7 @@ if (config.single_script) {
 }
 logInfo('======加入任务队列，并关闭重复运行的脚本=======')
 runningQueueDispatcher.addRunningTask()
+commonFunctions.killDuplicateScript()
 // 注册自动移除运行中任务
 commonFunctions.registerOnEngineRemoved(function () {
   config.resetBrightness && config.resetBrightness()
@@ -88,8 +90,13 @@ try {
 logInfo('解锁成功')
 
 // 请求截图权限
-commonFunctions.requestScreenCaptureOrRestart()
-commonFunctions.ensureDeviceSizeValid()
+let executeArguments = engines.myEngine().execArgv
+debugInfo(['启动参数：{}', JSON.stringify(executeArguments)])
+// 定时启动的任务, 将截图权限滞后请求
+if (!executeArguments.intent || executeArguments.executeByDispatcher) {
+  commonFunctions.requestScreenCaptureOrRestart()
+  commonFunctions.ensureDeviceSizeValid()
+}
 // 初始化悬浮窗
 if (!FloatyInstance.init()) {
   runningQueueDispatcher.removeRunningTask()

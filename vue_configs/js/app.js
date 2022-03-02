@@ -8,14 +8,17 @@
 
 Vue.use(vant);
 let app = new Vue({
+  router,
+  store,
   el: '#app',
   data () {
     return {
       resourcePath: 'unknown',
       message: '',
-      activeTab: '1',
+      transitionName: 'view-pop',
+      false: true,
+      showBack: this.$route.path != '/',
       showMenuDialog: false,
-      clientHeight: 0
     }
   },
   methods: {
@@ -31,9 +34,11 @@ let app = new Vue({
       })
     },
     clickedMenu: function (e) {
-      console.log('clicked menu ' + this.clientHeight)
       e.stopPropagation()
       this.showMenuDialog = true
+    },
+    onClickBack: function () {
+      this.$router.back()
     },
     resetDefaultConfigs: function () {
       $app.invoke('resetConfigs')
@@ -50,30 +55,60 @@ let app = new Vue({
     restoreRuntimeStorage: function () {
       $app.invoke('restoreRuntimeStorage')
     },
+    doUpdate: function () {
+      $app.invoke('downloadUpdate')
+    },
     getDialogContainer: function () {
       return document.querySelector('html')
+    },
+    registerResizeWindow: function () {
+      $app.registerFunction('resizeWindow', ({ height, width }) => {
+        let newHeight = window.innerWidth / width * height
+        if (newHeight > currentHeight) {
+          currentHeight = newHeight
+          console.log('设置高度为：' + newHeight)
+          document.getElementById('app').style.height = currentHeight + 'px'
+        }
+      })
+    },
+    delayRegisterIfBridgeNotReady: function () {
+      if ($app.moke) {
+        console.log('bridge 未完成注册 等待')
+        let self = this
+        setTimeout(() => {
+          self.delayRegisterIfBridgeNotReady()
+        }, 10)
+      }
+      this.registerResizeWindow()
     }
   },
-  mounted() {
-    // vant.Toast('vue加载完成');
-    let self = this
+  computed: {
+    menuTitle: function () {
+      return this.$store.getters.getTitle || '配置管理'
+    }
+  },
+  watch: {
+    '$route': function (to, from) {
+      console.log('router changed from:', from.path, from.meta.index)
+      console.log('router changed to:', to.path, to.meta.index)
+      this.$store.commit('setIndex', to.meta.index)
+      this.$store.commit('setTitle', to.meta.title || this.$store.getters.getTitleByPath(to.path))
+      // this.transitionName = to.meta.index > from.meta.index ? 'view-push' : 'view-pop'
+      this.transitionName = to.meta.index > from.meta.index ? 'slide-left' : 'slide-right'
+      console.log('transitionName', this.transitionName)
+      this.showBack = to.meta.index > 0
+    },
+  },
+  mounted () {
+    this.$store.commit('setIndex', 1)
     setTimeout(function () {
-      self.clientHeight = document.querySelector('html').clientHeight
-      console.log('client-height:' + self.clientHeight)
-    }, 200)
-    
-    // document.getElementById('app').style.minHeight = this.clientHeight + 'px'
+      console.log('mounted currentHeight:', currentHeight, 'window height:', window.innerHeight)
+      if (window.innerHeight > currentHeight) {
+        currentHeight = window.innerHeight
+        document.getElementById('app').style.height = currentHeight + 'px'
+      }
+    }, 1200)
+    console.log('准备注册 resizeWindow ' + (typeof $app) + ' ' + (typeof $app.registerFunction) + ' is moke?' + $app.moke)
+    this.delayRegisterIfBridgeNotReady()
   }
 })
-
-// 直接浏览器调试时，mock js bridge方法
-if (typeof $app === 'undefined') {
-  window.$app = {
-    invoke: (bridgeName, data, callback) => {},
-    receiveMessage: params => {},
-    registerFunction: (functionName, func) => {}
-  }
-  window.$nativeApi = {
-    request: (bridgeName, data) => {}
-  }
-}

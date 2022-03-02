@@ -28,6 +28,7 @@ let commonFunction = sRequire('CommonFunction')
 let widgetUtils = sRequire('WidgetUtils')
 
 config.show_debug_log = true
+config.useCustomScrollDown = false
 let runningQueueDispatcher = sRequire('RunningQueueDispatcher')
 commonFunction.autoSetUpBangOffset(true)
 runningQueueDispatcher.addRunningTask()
@@ -71,10 +72,10 @@ let clickButtonWindow = floaty.window(
         <button id="seeVideo" text="自动看10个视频" />
       </vertical>
       <vertical>
-        <button id="watchBubbleAuto" text="自动点泡泡看广告" />
+        <button id="fullAuto" text="自动看视频点泡泡" />
       </vertical>
       <vertical>
-        <button id="fullAuto" text="自动看视频点泡泡" />
+        <button id="toggleHide" text="切换隐藏悬浮窗" />
       </vertical>
       <vertical>
         <button id="closeBtn" text="关闭" />
@@ -96,6 +97,17 @@ function waitForCloseAndReturn () {
     if (skipTip) {
       automator.clickCenter(skipTip)
       randomSleep(2000)
+    }
+    if (widgetUtils.widgetCheck('首页', 1000)) {
+      toastLog('当前在首页 直接返回')
+      return
+    }
+    if (widgetUtils.widgetCheck('继续赚钱', 1000)) {
+      toastLog('当前已经没有奖励了')
+      let close = widgetUtils.widgetGetById('.*img_close')
+      automator.clickCenter(close)
+      randomSleep(1000)
+      return
     }
   }
   let skipBtn = widgetUtils.widgetGetById(targetIdRegex)
@@ -140,8 +152,20 @@ function clickBubbleAndWatchAD () {
           randomSleep(2000)
           clickIKnow()
         } else {
-          toastLog('未找到广告，退出')
-          return
+          if (widgetUtils.widgetCheck('日常任务', 1000)) {
+            toastLog('莫名其妙进到了任务界面，返回首页')
+            let homeButton = widgetUtils.widgetGetOne('首页', 1000)
+            if (homeButton) {
+              automator.clickCenter(homeButton)
+              randomSleep(2000)
+            } else {
+              toastLog('未找到首页按钮，退出')
+              return
+            }
+          } else {
+            toastLog('未找到广告，退出')
+            return
+          }
         }
       }
       randomSleep(2000)
@@ -170,35 +194,27 @@ function autoSeeVideo (limit) {
 let isAdjustEnabled = false
 let waitForBtn = false
 let watchBubble = false
-resetFloaty()
+clickButtonWindow.setPosition(-~~(clickButtonWindow.getWidth() / 2), config.device_height * 0.5)
+let hidden = false
 function resetFloaty () {
+  hidden = false
   ui.run(function () {
-    clickButtonWindow.setPosition(cvt(10), config.device_height * 0.5)
+    clickButtonWindow.setPosition(cvt(10), clickButtonWindow.getY())
   })
 }
 function hideFloaty () {
+  hidden = true
   ui.run(function () {
-    clickButtonWindow.setPosition(-~~(clickButtonWindow.getWidth() / 2), config.device_height * 0.5)
+    clickButtonWindow.setPosition(-~~(clickButtonWindow.getWidth() / 2), clickButtonWindow.getY())
   })
 }
-clickButtonWindow.watchBubbleAuto.click(function () {
-  if (watchBubble) {
-    return
-  }
-  threadPool.execute(function () {
-    watchBubble = true
-    ui.run(function () {
-      clickButtonWindow.watchBubbleAuto.setText('执行中...')
-    })
+clickButtonWindow.toggleHide.click(function () {
+  hidden = !hidden
+  if (hidden) {
     hideFloaty()
-    randomSleep(1000)
-    clickBubbleAndWatchAD()
-    watchBubble = false
-    ui.run(function () {
-      clickButtonWindow.watchBubbleAuto.setText('自动点泡泡看广告')
-    })
+  } else {
     resetFloaty()
-  })
+  }
 })
 clickButtonWindow.waitForClose.click(function () {
   if (watchBubble || waitForBtn) {

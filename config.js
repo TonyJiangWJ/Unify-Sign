@@ -34,6 +34,7 @@ let default_config = {
   // 锁屏启动关闭提示框
   dismiss_dialog_if_locked: true,
   request_capture_permission: true,
+  not_lingering_float_window: true,
   capture_permission_button: 'START NOW|立即开始|允许',
   // 是否保存日志文件，如果设置为保存，则日志文件会按时间分片备份在logback/文件夹下
   save_log_file: true,
@@ -57,6 +58,7 @@ let default_config = {
   warn_skipped_ignore_package: false,
   warn_skipped_too_much: false,
   auto_check_update: true,
+  github_url: 'https://github.com/TonyJiangWJ/Unify-Sign',
   // github release url 用于检测更新状态
   github_latest_url: 'https://api.github.com/repos/TonyJiangWJ/Unify-Sign/releases/latest',
   killAppWithGesture: true,
@@ -69,6 +71,8 @@ let default_config = {
   auto_set_bang_offset: true,
   bang_offset: 0,
   thread_name_prefix: 'unify_sign_',
+  // 标记是否清除webview缓存
+  clear_webview_cache: false,
   supported_signs: [
     {
       name: '蚂蚁积分签到',
@@ -94,6 +98,16 @@ let default_config = {
       name: '淘金币签到',
       script: 'Taobao-Coin.js',
       enabled: true
+    },
+    {
+      name: '叮咚鱼塘',
+      script: 'DingDong.js',
+      enabled: true
+    },
+    {
+      name: '微博积分签到',
+      script: 'Weibo.js',
+      enabled: true
     }
   ]
 }
@@ -102,6 +116,9 @@ let CONFIG_STORAGE_NAME = 'unify_sign'
 let PROJECT_NAME = '聚合签到'
 let config = {}
 let storageConfig = storages.create(CONFIG_STORAGE_NAME)
+let securityFields = ['password', 'alipay_lock_password']
+let AesUtil = require('./lib/AesUtil.js')
+let aesKey = device.getAndroidId()
 Object.keys(default_config).forEach(key => {
   let storedVal = storageConfig.get(key)
   if (typeof storedVal !== 'undefined') {
@@ -115,6 +132,9 @@ Object.keys(default_config).forEach(key => {
         }
       })
     } else {
+      if (securityFields.indexOf(key) > -1) {
+        storedVal = AesUtil.decrypt(storedVal, aesKey) || storedVal
+      }
       config[key] = storedVal
     }
   } else {
@@ -122,6 +142,16 @@ Object.keys(default_config).forEach(key => {
   }
 })
 
+config.scaleRate = (() => {
+  let width = config.device_width
+  if (width >= 1440) {
+    return 1440 / 1080
+  } else if (width < 1000) {
+    return 720 / 1080
+  } else {
+    return 1
+  }
+})()
 
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
@@ -129,6 +159,7 @@ if (!isRunningMode) {
       scope.config_instance = {
         config: config,
         default_config: default_config,
+        securityFields: securityFields,
         storage_name: CONFIG_STORAGE_NAME,
         project_name: PROJECT_NAME
       }
