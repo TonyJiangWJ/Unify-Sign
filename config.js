@@ -100,7 +100,7 @@ let default_config = {
       enabled: true
     },
     {
-      name: '叮咚鱼塘',
+      name: '叮咚签到',
       script: 'DingDong.js',
       enabled: true
     },
@@ -153,6 +153,57 @@ config.scaleRate = (() => {
   }
 })()
 
+// 覆写配置信息
+config.overwrite = (key, value) => {
+  let storage_name = CONFIG_STORAGE_NAME
+  let config_key = key
+  if (key.indexOf('.') > -1) {
+    let keyPair = key.split('.')
+    storage_name = CONFIG_STORAGE_NAME + '_' + keyPair[0]
+    key = keyPair[1]
+    config_key = keyPair[0] + '_config'
+    if (!config.hasOwnProperty(config_key) || !config[config_key].hasOwnProperty(key)) {
+      return
+    }
+    config[config_key][key] = value
+  } else {
+    if (!config.hasOwnProperty(config_key)) {
+      return
+    }
+    config[config_key] = value
+  }
+  console.verbose('覆写配置', storage_name, key)
+  storages.create(storage_name).put(key, value)
+}
+// 扩展配置
+let workpath = getCurrentWorkPath()
+let configDataPath = workpath + '/config_data/'
+// 叮咚识图配置
+let default_dingdong_config = {
+  mine_base64: files.read(configDataPath + 'dingdong/mine_base64.data'),
+  fishpond_entry: files.read(configDataPath + 'dingdong/fishpond_entry.data'),
+  fishpond_check: files.read(configDataPath + 'dingdong/fishpond_check.data'),
+  fishpond_can_collect: files.read(configDataPath + 'dingdong/fishpond_can_collect.data'),
+  fishpond_daily_collect: files.read(configDataPath + 'dingdong/fishpond_daily_collect.data'),
+  fishpond_normal_collect: files.read(configDataPath + 'dingdong/fishpond_normal_collect.data'),
+  fishpond_continuous_sign: files.read(configDataPath + 'dingdong/fishpond_continuous_sign.data'),
+  fishpond_do_continuous_sign: files.read(configDataPath + 'dingdong/fishpond_do_continuous_sign.data'),
+  fishpond_close_continuous_sign: files.read(configDataPath + 'dingdong/fishpond_close_continuous_sign.data'),
+  fishpond_close: files.read(configDataPath + 'dingdong/fishpond_close.data'),
+  orchard_entry: files.read(configDataPath + 'dingdong/orchard_entry.data'),
+  orchard_can_collect: files.read(configDataPath + 'dingdong/orchard_can_collect.data'),
+  orchard_daily_collect: files.read(configDataPath + 'dingdong/orchard_daily_collect.data'),
+  orchard_normal_collect: files.read(configDataPath + 'dingdong/orchard_normal_collect.data'),
+  orchard_check: files.read(configDataPath + 'dingdong/orchard_check.data'),
+  subTasks: {
+    CREDIT_SIGN: '积分签到',
+    FISHPOND: '鱼塘签到',
+    ORCHARD: '叮咚果园'
+  }
+}
+default_config.dingdong_config = default_dingdong_config
+config.dingdong_config = convertDefaultData(default_dingdong_config, CONFIG_STORAGE_NAME + '_dingdong')
+
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
@@ -170,4 +221,33 @@ if (!isRunningMode) {
   setTimeout(function () {
     engines.execScriptFile(files.cwd() + "/可视化配置.js", { path: files.cwd() })
   }, 30)
+}
+
+function convertDefaultData(default_config, config_storage_name) {
+  let config_storage = storages.create(config_storage_name)
+  let configData = {}
+  Object.keys(default_config).forEach(key => {
+    let storageValue = config_storage.get(key, default_config[key])
+    if (storageValue == '') {
+      storageValue = default_config[key]
+    }
+    configData[key] = storageValue
+  })
+  return configData
+}
+
+function getCurrentWorkPath() {
+  let currentPath = files.cwd()
+  if (files.exists(currentPath + '/main.js')) {
+    return currentPath
+  }
+  let paths = currentPath.split('/')
+
+  do {
+    paths = paths.slice(0, paths.length - 1)
+    currentPath = paths.reduce((a, b) => a += '/' + b)
+  } while (!files.exists(currentPath + '/main.js') && paths.length > 0)
+  if (paths.length > 0) {
+    return currentPath
+  }
 }

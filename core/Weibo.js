@@ -1,5 +1,5 @@
 /**
- * 叮咚鱼塘
+ * 微博签到
  */
 
  let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)

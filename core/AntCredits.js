@@ -128,7 +128,7 @@ function CreditRunner () {
     sleep(2000)
     FloatyInstance.setFloatyText('等待家庭积分控件')
     let limit = 5
-    let target = widgetUtils.widgetGetOne(/家庭积分.*\d+|家庭积分待领取/)
+    let target = widgetUtils.widgetGetById(/.*h5_nav_options1/)
     sleep(200)
     if (target) {
       this.displayButtonAndClick(target, '家庭积分')

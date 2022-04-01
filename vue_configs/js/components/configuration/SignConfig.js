@@ -22,14 +22,32 @@ const SignConfig = {
           {
             name: '京东签到',
             script: 'JingDongBeans.js',
-            enabled: false
+            enabled: true
           },
           {
             name: '米游社-原神签到',
             script: 'MiHoYou.js',
             enabled: true
+          },
+          {
+            name: '淘金币签到',
+            script: 'Taobao-Coin.js',
+            enabled: true
+          },
+          {
+            name: '叮咚签到',
+            script: 'DingDong.js',
+            enabled: true
+          },
+          {
+            name: '微博积分签到',
+            script: 'Weibo.js',
+            enabled: true
           }
         ]
+      },
+      settingPage: {
+        '叮咚签到': '/basic/sign/dingdong',
       }
     }
   },
@@ -46,6 +64,7 @@ const SignConfig = {
       })
     },
     toggle (index) {
+      console.log('变更索引：', index)
       this.$refs.checkboxes[index].toggle()
     },
     toggleExecuted (name) {
@@ -73,13 +92,17 @@ const SignConfig = {
           }
         })
       }
+    },
+    doSetting (name) {
+      this.$router.push(this.settingPage[name])
+    },
+    hasSetting (name) {
+      return !!this.settingPage[name]
     }
   },
   watch: {
-    enabledSigns: function (v) {
-      this.checked = v
-    },
     checked: function (v) {
+      console.log('before change', JSON.stringify(v))
       this.configs.supported_signs.forEach(s => s.enabled = false)
       if (v && v.length > 0) {
         this.configs.supported_signs.filter(s => v.indexOf(s.name) > -1).forEach(s => s.enabled = true)
@@ -101,7 +124,10 @@ const SignConfig = {
             </template>\
           </van-cell>\
           <template #right>\
+          <div style="display:flex;height: 100%;">
             <van-button square type="danger" text="切换执行状态" @click="toggleExecuted(supportedSign.name)" style="height: 100%"/>\
+            <van-button square type="primary" text="更多设置" @click="doSetting(supportedSign.name)" v-if="hasSetting(supportedSign.name)"style="height: 100%"/>\
+          </div>
           </template>\
         </van-swipe-cell>\
       </van-cell-group>\

@@ -114,25 +114,16 @@ function SignRunner () {
       this.executedSuccess = true
       return
     }
-    if (!this.checkExecuted(this.name + "_coin")) {
+    if (!this.checkExecuted()) {
       this.launchTaobao(_package_name)
       sleep(1000)
       this.checkAndCollect()
       sleep(1000)
+      this.setExecuted()
     } else {
       FloatyInstance.setFloatyText('淘金币签到已完成')
       this.executedSuccess = true
     }
-    /*
-    if (!this.checkExecuted(this.name + "_town")) {
-      FloatyInstance.setFloatyText('准备开始淘金币小镇签到')
-      this.launchTown()
-      this.checkAndCollectTown()
-    } else {
-      FloatyInstance.setFloatyText('淘金币小镇签到已完成')
-      this.executedSuccess = true
-    }
-    */
     commonFunctions.minimize(_package_name)
   }
 }

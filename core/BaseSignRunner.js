@@ -41,6 +41,34 @@ function BaseSignRunner () {
   }
 
   /**
+   * 判断今天子任务是否已经执行过
+   */
+  this.isSubTaskExecuted = function (taskName, checkOnly) {
+    if (commonFunctions.checkIsSignExecutedToday(this.name + ':' + taskName)) {
+      if (checkOnly) {
+        return true
+      }
+      FloatyInstance.setFloatyText(this.name + ':' + taskName + '今日已经执行过，跳过执行')
+      sleep(1000)
+      return true
+    } else {
+      // 自动延期
+      runningQueueDispatcher.renewalRunningTask()
+      return false
+    }
+  }
+
+  /**
+   * 标记子任务已完成
+   * 
+   * @param {string} taskName 子任务名称
+   * @param {number} timeout 可选参数 设置超时时间，超时后可以再次执行
+   */
+  this.setSubTaskExecuted = function (taskName, timeout) {
+    commonFunctions.setExecutedToday(this.name + ':' + taskName, timeout)
+  }
+
+  /**
    * 等待跳过按钮并点击
    */
   this.awaitAndSkip = function (checkingList) {
