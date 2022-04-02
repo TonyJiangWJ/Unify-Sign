@@ -109,6 +109,7 @@ function SignRunner () {
     if (fishpond) {
       automator.click(fishpond.centerX(), fishpond.centerY())
       sleep(2000)
+      let continuousSigned = false
       if (!this.checkForTargetImg(fishpond_check, '鱼塘加载校验')) {
         // 尝试校验是否自动展示了连续签到
         if (!this.checkIfContinuousOpen()) {
@@ -116,14 +117,18 @@ function SignRunner () {
           commonFunctions.killCurrentApp()
           sleep(2000)
           return this.exec()
+        } else {
+          continuousSigned = true
         }
       }
-      let continuousSign = this.captureAndCheckByImg(continuous_sign, '连续签到')
-      if (continuousSign) {
-        automator.click(continuousSign.centerX(), continuousSign.centerY())
-        sleep(2000)
-        this.checkIfContinuousOpen()
-        sleep(2000)
+      if (!continuousSigned) {
+        let continuousSign = this.captureAndCheckByImg(continuous_sign, '连续签到')
+        if (continuousSign) {
+          automator.click(continuousSign.centerX(), continuousSign.centerY())
+          sleep(2000)
+          this.checkIfContinuousOpen()
+          sleep(2000)
+        }
       }
       let collect = this.captureAndCheckByImg(can_collect, '可领取')
       if (collect) {
