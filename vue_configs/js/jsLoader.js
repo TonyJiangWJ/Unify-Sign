@@ -6,6 +6,9 @@ const loadJsList = [
   './js/components/configuration/DevelopConfig.js',
   './js/components/configuration/CommonConfigs.js',
   './js/components/configuration/DingDongConfig.js',
+  './js/components/configuration/WeiboConfig.js',
+  './js/components/configuration/SignTaskScheduleConfig.js',
+  './js/components/configuration/TaskScheduleList.js',
   './js/components/configuration/SignConfig.js',
   './js/components/Index.js',
 ]
@@ -34,7 +37,7 @@ appendJs('./js/components/common.js')
 
 // 加载CSS
 const cssList = [
-  // 'https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css',
+  // 'https://fastly.jddelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css',
 ]
 cssList.forEach((css) => appendCss(css))
 

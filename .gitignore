@@ -1,7 +1,10 @@
 .DS_Store
 *.zip
 *.log
+*.log.*
 *.ign.js
 LockScreen.js
 ExternalUnlockDevice.js
 .lh/
+*.txt
+*.txt.*

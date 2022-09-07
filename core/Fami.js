@@ -34,8 +34,26 @@ function SignRunner () {
       sleep(500)
       FloatyInstance.setFloatyText('点击进入')
       automator.clickCenter(signButton)
-      sleep(500)
-      if (widgetUtils.widgetWaiting('已连续签到')) {
+      sleep(1500)
+      let relogin = widgetUtils.widgetGetById('.*cb_checkbox_onekey', 2000)
+      if (relogin) {
+        FloatyInstance.setFloatyInfo({
+          x: relogin.bounds().centerX(),
+          y: relogin.bounds().centerY()
+        }, '找到了重新登录checkbox')
+        automator.clickCenter(relogin)
+        sleep(500)
+        relogin = widgetUtils.widgetGetOne('一键登录', 1000)
+        if (relogin) {
+          FloatyInstance.setFloatyInfo({
+            x: relogin.bounds().centerX(),
+            y: relogin.bounds().centerY()
+          }, '找到了一键登录按钮')
+          automator.clickCenter(relogin)
+          sleep(1000)
+        }
+      }
+      if (widgetUtils.widgetWaiting('.*签到领福利')) {
         if (widgetUtils.widgetCheck('明日再来', 1000)) {
           FloatyInstance.setFloatyInfo({
             x: 500,

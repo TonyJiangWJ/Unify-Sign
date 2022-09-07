@@ -91,9 +91,12 @@ function BeanCollector () {
       }
       let toCollect = tryEnter(mine, '京豆')
       if (toCollect) {
-        beans = tryEnter(toCollect, '去签到领京豆|已签到')
+        beans = tryEnter(toCollect, '去签到领京豆|(已签到|已连签.*|明天签到.*)')
+        if (!beans) {
+          return false
+        }
         let content = beans.desc() || beans.text()
-        if (content === '已签到') {
+        if (/已连签.*|明天签到.*/.test(content)) {
           this.setExecuted()
           FloatyInstance.setFloatyInfo({
             x: beans.bounds().centerX(),
@@ -105,9 +108,12 @@ function BeanCollector () {
       }
     }
     if (beans) {
-      let doCollect = tryEnter(beans, '签到领京豆|已连续签到')
+      let doCollect = tryEnter(beans, '签到领.*豆|(已签到|已连签.*|明天签到.*)')
+      if (!doCollect) {
+        return false
+      }
       let content = doCollect.desc() || doCollect.text()
-      if (content === '已连续签到') {
+      if (/已连签.*|明天签到.*/.test(content)) {
         this.setExecuted()
         FloatyInstance.setFloatyInfo({
           x: doCollect.bounds().centerX(),

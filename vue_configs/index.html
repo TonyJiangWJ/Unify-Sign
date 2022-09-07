@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-11-29 13:17:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2020-12-29 23:44:48
+ * @Last Modified time: 2022-09-05 13:32:12
  * @Description: 
 -->
 <!DOCTYPE html>
@@ -13,15 +13,16 @@
   <meta http-equiv=X-UA-Compatible content="IE=edge">
   <meta name=viewport content="width=device-width,initial-scale=1">
   <title>配置工具</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vant@2.10/lib/index.css" />
+  <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@2.10/lib/index.css" />
   <link rel="stylesheet" href="./css/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/vconsole@3.11.2/dist/vconsole.min.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/vconsole@3.11.2/dist/vconsole.min.js"></script>
   <script>window.vConsole = new VConsole();</script>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script> -->
-  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/vue@2.6/dist/vue.min.js"></script>
+  <!-- <script src="https://fastly.jsdelivr.net/npm/vue/dist/vue.js"></script> -->
   <script src="https://unpkg.com/vue-router@3.4.9/dist/vue-router.js"></script>
   <script src="https://unpkg.com/vuex@3.6.2/dist/vuex.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vant@2.10/lib/vant.min.js"></script>
+  <script src="https://fastly.jsdelivr.net/npm/vant@2.10/lib/vant.min.js"></script>
+  <script src="https://gw.alipayobjects.com/os/lib/antv/g2/4.1.35/dist/g2.min.js"></script>
 </head>
 
 <body>
@@ -96,7 +97,7 @@
   // 直接浏览器调试时，mock js bridge方法
   if (typeof $app === 'undefined') {
     window.$app = {
-      moke: true,
+      mock: true,
       invoke: (bridgeName, data, callback) => { },
       receiveMessage: params => { },
       registerFunction: (functionName, func) => { }
@@ -104,6 +105,9 @@
     window.$nativeApi = {
       request: (bridgeName, data) => { return Promise.reject({}) }
     }
+    setTimeout(() => {
+      window.$app.delay_off = true
+    }, 5000)
   }
 </script>
 <script src="./js/jsLoader.js"></script>

@@ -31,8 +31,8 @@ if (config.device_width < 10 || config.device_height < 10) {
 
 ui.layout(
   <vertical>
-    <webview id="loadingWebview" margin="0 0" />
-    <webview id="webview" margin="0 0" />
+    <webview id="loadingWebview" margin="0 0" h="*" w="*" />
+    <webview id="webview" margin="0 0" h="*" w="*" />
   </vertical>
 )
 let mainScriptPath = FileUtils.getRealMainScriptPath(true)
@@ -48,6 +48,7 @@ if (config.clear_webview_cache) {
   config.overwrite('clear_webview_cache', false)
 }
 prepareWebView(ui.loadingWebview, {
+  enable_log: config.webview_loging,
   mainScriptPath: mainScriptPath,
   indexFilePath: loadingFilePath,
   // 延迟注册
@@ -79,6 +80,7 @@ let bridgeHandlerBuilder = require('./lib/BridgeHandler.js')
 let loadSuccess = false
 /**/
 postMessageToWebView = prepareWebView(ui.webview, {
+  enable_log: config.webview_loging,
   mainScriptPath: mainScriptPath,
   indexFilePath: indexFilePath,
   // 延迟注册
@@ -143,7 +145,7 @@ function registerSensors () {
     })
   }
   distanceSensor = sensors.register('proximity', sensors.delay.ui)
-  if (!distanceSensor) {
+  if (distanceSensor) {
     distanceSensor.on('change', (event, d) => {
       postMessageToWebView({ functionName: 'distanceSensorChange', data: { distance: d } })
     })

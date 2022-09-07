@@ -12,10 +12,6 @@ let Index = {
           link: '/basic/sign'
         },
         {
-          title: '悬浮窗设置',
-          link: '/basic/floaty'
-        },
-        {
           title: '日志设置',
           link: '/basic/log'
         },

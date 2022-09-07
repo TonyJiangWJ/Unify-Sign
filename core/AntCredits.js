@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2020-11-23 19:07:22
+ * @Last Modified time: 2022-09-06 14:44:16
  * @Description: 
  */
 
@@ -124,6 +124,9 @@ function CreditRunner () {
     sleep(500)
   }
 
+  /**
+   * @deprecated 家庭积分目前感觉没有意义而且容易导致出错 不再执行
+   */
   this.checkFamilyCredit = function () {
     sleep(2000)
     FloatyInstance.setFloatyText('等待家庭积分控件')
@@ -154,8 +157,6 @@ function CreditRunner () {
     FloatyInstance.setFloatyPosition(400, 400)
     FloatyInstance.setFloatyText('准备打开领取积分页面')
     this.openCreditPage()
-    FloatyInstance.setFloatyText('准备领取家庭积分')
-    this.checkFamilyCredit()
     FloatyInstance.setFloatyText('准备领取积分')
     this.checkAndCollect()
     FloatyInstance.setFloatyText('领取完毕')

@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2021-01-10 14:43:27
+ * @Last Modified time: 2022-07-14 09:14:41
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -12,9 +12,13 @@ let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
 let { logInfo, errorInfo, warnInfo, debugInfo, infoLog, debugForDev, flushAllLogs } = singletonRequire('LogUtils')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let commonFunctions = singletonRequire('CommonFunction')
+let signTaskManager = singletonRequire('SignTaskManager')
+let automator = singletonRequire('Automator')
 config.not_lingering_float_window = true
-// 随机延迟启动
-commonFunctions.setRandomStartedIfNeeded()
+signTaskManager.init()
+  .generateDefaultScheduleConfig()
+  .generateTaskSchedules()
+  .exitIfNoTaskToExecute()
 commonFunctions.delayIfBatteryLow()
 let callStateListener = !config.is_pro && config.enable_call_state_control ? singletonRequire('CallStateListener') : { exitIfNotIdle: () => { } }
 // 用于代理图片资源，请勿移除 否则需要手动添加recycle代码
@@ -60,6 +64,7 @@ if (!commonFunctions.ensureAccessibilityEnabled()) {
   errorInfo('获取无障碍权限失败')
   exit()
 }
+commonFunctions.markExtendSuccess()
 logInfo('---前置校验完成;启动系统--->>>>')
 // 打印运行环境信息
 if (files.exists('version.json')) {
@@ -113,7 +118,6 @@ commonFunctions.autoSetUpBangOffset()
  ***********************/
 commonFunctions.showDialogAndWait(true)
 commonFunctions.listenDelayStart()
-
 // 开发模式不包裹异常捕捉，方便查看错误信息
 if (config.develop_mode) {
   mainExecutor.exec()

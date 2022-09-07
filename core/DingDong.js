@@ -8,15 +8,31 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
+let paddleOcr = singletonRequire('PaddleOcrUtil')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
   BaseSignRunner.call(this)
-  this.subTasks = config.dingdong_config.subTasks || {
-    CREDIT_SIGN: '积分签到',
-    FISHPOND: '鱼塘签到',
-    ORCHARD: '叮咚果园'
-  }
+  this.subTasks = config.supported_signs.filter(task => task.taskCode === 'DingDong')[0].subTasks || [
+    {
+      taskCode: 'creditSign',
+      taskName: '积分签到',
+      enabled: true,
+    },
+    {
+      taskCode: 'fishpond',
+      taskName: '鱼塘签到',
+      enabled: true,
+    },
+    {
+      taskCode: 'orchard',
+      taskName: '叮咚果园',
+      enabled: true,
+    }
+  ]
+  let CREDIT_SIGN = this.subTasks[0]
+  let FISHPOND = this.subTasks[1]
+  let ORCHARD = this.subTasks[2]
   let _package_name = 'com.yaya.zone'
   let mine_base64 = config.dingdong_config.mine_base64
   let fishpond_entry = config.dingdong_config.fishpond_entry
@@ -25,6 +41,7 @@ function SignRunner () {
   let fishpond_daily_collect = config.dingdong_config.fishpond_daily_collect
   let fishpond_normal_collect = config.dingdong_config.fishpond_normal_collect
   let fishpond_close = config.dingdong_config.fishpond_close
+  let sign_and_get_points = config.dingdong_config.sign_and_get_points
 
   // 连续签到
   let continuous_sign = config.dingdong_config.fishpond_continuous_sign
@@ -56,6 +73,11 @@ function SignRunner () {
       sleep(1000)
       // id 找不到 用图片查找
       mine = this.wrapImgPointWithBounds(this.captureAndCheckByImg(mine_base64, '我的'))
+      if (!mine && paddleOcr.enabled) {
+        FloatyInstance.setFloatyText('未找到 我的 准备用OCR方式查找')
+        sleep(1000)
+        mine = this.wrapOcrPointWithBounds(this.captureAndCheckByOcr('我的', '我的', [config.device_width / 2, config.device_height * 0.7]))
+      }
     }
     if (mine) {
       FloatyInstance.setFloatyInfo({
@@ -71,9 +93,9 @@ function SignRunner () {
       this.fishpond()
       // 果园
       this.orchard()
-      if (this.isSubTaskExecuted(this.subTasks.CREDIT_SIGN, true)
-        && this.isSubTaskExecuted(this.subTasks.FISHPOND, true)
-        && this.isSubTaskExecuted(this.subTasks.ORCHARD, true)) {
+      if (this.isSubTaskExecuted(CREDIT_SIGN, true)
+        && this.isSubTaskExecuted(FISHPOND, true)
+        && this.isSubTaskExecuted(ORCHARD, true)) {
         infoLog(['全部任务完成'])
         this.setExecuted()
       } else {
@@ -102,7 +124,7 @@ function SignRunner () {
   }
 
   this.fishpond = function () {
-    if (this.isSubTaskExecuted(this.subTasks.FISHPOND)) {
+    if (this.isSubTaskExecuted(FISHPOND)) {
       return
     }
     let fishpond = this.captureAndCheckByImg(fishpond_entry, '叮咚鱼塘')
@@ -154,7 +176,7 @@ function SignRunner () {
         automator.back()
       }
       sleep(1000)
-      this.setSubTaskExecuted(this.subTasks.FISHPOND)
+      this.setSubTaskExecuted(FISHPOND)
     } else {
       FloatyInstance.setFloatyText('未找到鱼塘入口')
       sleep(1000)
@@ -162,7 +184,7 @@ function SignRunner () {
   }
 
   this.points = function () {
-    if (this.isSubTaskExecuted(this.subTasks.CREDIT_SIGN)) {
+    if (this.isSubTaskExecuted(CREDIT_SIGN)) {
       return
     }
     let pointEntry = widgetUtils.widgetGetOne('积分')
@@ -173,12 +195,12 @@ function SignRunner () {
         sleep(1000)
         let findType = widgetUtils.alternativeWidget('立即签到领积分', '今日已签到.*')
         if (findType === 1) {
-          this.displayButtonAndClick(widgetUtils.widgetGetOne('立即签到领积分', 1000), '签到领积分')
-          this.setSubTaskExecuted(this.subTasks.CREDIT_SIGN)
+          this.captureAndCheckByImg(sign_and_get_points, '签到领积分', null, true)
+          this.setSubTaskExecuted(CREDIT_SIGN)
         } else {
           if (findType === 2) {
             FloatyInstance.setFloatyText('今日已签到')
-            this.setSubTaskExecuted(this.subTasks.CREDIT_SIGN)
+            this.setSubTaskExecuted(CREDIT_SIGN)
           } else {
             FloatyInstance.setFloatyText('未能找到领积分按钮')
           }
@@ -198,7 +220,7 @@ function SignRunner () {
   let orchardEnterCheck = config.dingdong_config.orchard_check
 
   this.orchard = function () {
-    if (this.isSubTaskExecuted(this.subTasks.ORCHARD)) {
+    if (this.isSubTaskExecuted(ORCHARD)) {
       return
     }
     let orchard = this.captureAndCheckByImg(orchardEntry, '叮咚果园')
@@ -219,7 +241,7 @@ function SignRunner () {
           sleep(2000)
         }
       }
-      this.setSubTaskExecuted(this.subTasks.ORCHARD)
+      this.setSubTaskExecuted(ORCHARD)
       automator.back()
     }
   }
