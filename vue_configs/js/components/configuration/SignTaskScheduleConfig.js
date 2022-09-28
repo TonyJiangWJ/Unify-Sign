@@ -39,13 +39,13 @@ const TaskConfigEditor = {
       this.editStart = true
       this.currentTime = this.startTime
       this.showTimePicker = true
-      this.$emit('config-changed', this.scheduleConfig)
+      // this.$emit('config-changed', this.scheduleConfig)
     },
     changeEnd: function () {
       this.editStart = false
       this.currentTime = this.endTime
       this.showTimePicker = true
-      this.$emit('config-changed', this.scheduleConfig)
+      // this.$emit('config-changed', this.scheduleConfig)
     },
     groupChanged: function () {
       this.scheduleConfig.groupName = this.groupMap[this.scheduleConfig.groupCode].groupName
@@ -86,6 +86,9 @@ const TaskConfigEditor = {
           this.scheduleConfig.start = new Date('2022-01-01 ' + this.currentTime) - new Date('2022-01-01 00:00:00')
         } else {
           this.scheduleConfig.end = new Date('2022-01-01 ' + this.currentTime) - new Date('2022-01-01 00:00:00')
+        }
+        if (this.scheduleConfig.start && this.scheduleConfig.end) {
+          this.$emit('config-changed', this.scheduleConfig)
         }
       }
     }
