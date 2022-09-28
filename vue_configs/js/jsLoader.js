@@ -7,9 +7,11 @@ const loadJsList = [
   './js/components/configuration/CommonConfigs.js',
   './js/components/configuration/DingDongConfig.js',
   './js/components/configuration/WeiboConfig.js',
+  './js/components/configuration/BBFarmConfig.js',
   './js/components/configuration/SignTaskScheduleConfig.js',
   './js/components/configuration/TaskScheduleList.js',
   './js/components/configuration/SignConfig.js',
+  './js/components/configuration/OCRConfig.js',
   './js/components/Index.js',
 ]
 /**

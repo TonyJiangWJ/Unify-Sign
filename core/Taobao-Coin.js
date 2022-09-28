@@ -26,10 +26,11 @@ function SignRunner () {
     let coinButton = widgetUtils.widgetGetOne('领淘金币')
     if (coinButton) {
       this.displayButtonAndClick(coinButton, '准备进入领淘金币')
-      sleep(1000)
+      // 比较坑爹的 要等好久才会出现控件
+      sleep(5000)
       FloatyInstance.setFloatyText('准备查找签到领金币按钮')
 
-      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领.*', null, true)
+      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领|明日签到.*', null, true)
       if (result.value === 1) {
         let signButton = result.target
         if (signButton) {

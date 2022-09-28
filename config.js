@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-09-07 19:48:09
+ * @Last Modified time: 2022-09-29 00:24:15
  * @Description: 
  */
 let currentEngine = engines.myEngine().getSource() + ''
@@ -75,6 +75,8 @@ let default_config = {
   clear_webview_cache: false,
   // 打印webview日志
   webview_loging: false,
+  // 本地ocr优先级
+  local_ocr_priority: 'auto',
   supported_signs: [
     {
       name: '蚂蚁积分签到',
@@ -133,6 +135,12 @@ let default_config = {
       name: '微博积分签到',
       taskCode: 'Weibo',
       script: 'Weibo.js',
+      enabled: true
+    },
+    {
+      name: '芭芭农场',
+      taskCode: 'BBFarm',
+      script: 'BBFarm.js',
       enabled: true
     },
   ]
@@ -213,7 +221,7 @@ let default_dingdong_config = {
   'fishpond_close_continuous_sign', 'fishpond_close', 'orchard_entry', 'orchard_can_collect', 'orchard_daily_collect',
   'orchard_normal_collect', 'orchard_check', 'sign_and_get_points'
 ].forEach(imageKey => {
-  default_dingdong_config[imageKey] = files.read(configDataPath + 'dingdong/' + imageKey + '.data')
+  default_dingdong_config[imageKey] = readImgDataIfExists(configDataPath + 'dingdong/' + imageKey + '.data')
 })
 default_config.dingdong_config = default_dingdong_config
 config.dingdong_config = convertDefaultData(default_dingdong_config, CONFIG_STORAGE_NAME + '_dingdong')
@@ -221,10 +229,21 @@ config.dingdong_config = convertDefaultData(default_dingdong_config, CONFIG_STOR
 // 微博
 let default_weibo_config = {};
 ['sign_btn', 'mine_btn', 'mine_checked_btn', 'signed_icon'].forEach(imageKey => {
-  default_weibo_config[imageKey] = files.read(configDataPath + 'weibo/' + imageKey + '.data')
+  default_weibo_config[imageKey] = readImgDataIfExists(configDataPath + 'weibo/' + imageKey + '.data')
 })
 default_config.weibo_config = default_weibo_config
 config.weibo_config = convertDefaultData(default_weibo_config, CONFIG_STORAGE_NAME + '_weibo')
+
+// 芭芭农场
+let default_bb_farm_config = {};
+[
+  'collect_btn_alipay', 'entry_check_alipay', 'task_btn_alipay',
+  'collect_btn_taobao', 'entry_check_taobao', 'task_btn_taobao'
+].forEach(imageKey => {
+  default_bb_farm_config[imageKey] = readImgDataIfExists(configDataPath + 'bbfarm/' + imageKey + '.data')
+})
+default_config.bb_farm_config = default_bb_farm_config
+config.bb_farm_config = convertDefaultData(default_bb_farm_config, CONFIG_STORAGE_NAME + '_bb_farm')
 
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
@@ -272,4 +291,8 @@ function getCurrentWorkPath () {
   if (paths.length > 0) {
     return currentPath
   }
+}
+
+function readImgDataIfExists(path) {
+  return files.exists(path) ? files.read(path) : ''
 }

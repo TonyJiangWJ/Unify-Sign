@@ -73,6 +73,7 @@ const SignConfig = {
       settingPage: {
         '叮咚签到': '/basic/sign/dingdong',
         '微博积分签到': '/basic/sign/weibo',
+        '芭芭农场': '/basic/sign/bbFarm',
       }
     }
   },

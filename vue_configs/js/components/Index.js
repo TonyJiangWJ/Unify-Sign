@@ -20,6 +20,10 @@ let Index = {
           link: '/advance/skipPackage'
         },
         {
+          title: 'OCR设置',
+          link: '/advance/ocr'
+        },
+        {
           title: '高级设置',
           link: '/advance/common'
         },

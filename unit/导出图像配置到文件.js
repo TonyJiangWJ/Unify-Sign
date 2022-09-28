@@ -9,6 +9,7 @@ console.show()
 
 exportConfigs(config.dingdong_config, 'dingdong/')
 exportConfigs(config.weibo_config, 'weibo/')
+exportConfigs(config.bb_farm_config, 'bbfarm/')
 
 function exportConfigs(imageConfig, path) {
   path = configPath + path

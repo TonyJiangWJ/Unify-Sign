@@ -7,7 +7,7 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
-let paddleOcr = singletonRequire('PaddleOcrUtil')
+let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 
@@ -25,7 +25,7 @@ function SignRunner () {
     this.awaitAndSkip(['\\s*允许\\s*', '\\s*取消\\s*'])
     FloatyInstance.setFloatyText('准备查找 我')
     let clickMine = null
-    if (paddleOcr.enabled) {
+    if (localOcrUtil.enabled) {
       FloatyInstance.setFloatyText('准备用OCR方式查找')
       sleep(1000)
       clickMine = this.captureAndCheckByOcr('^我$', '我', [config.device_width / 2, config.device_height * 0.7])

@@ -210,7 +210,7 @@ const AdvanceCommonConfig = {
   data () {
     return {
       activeNames: [],
-      enabledServices: '',
+      enabledServices: 'com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider:com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider:com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider',
       configs: {
         single_script: true,
         auto_restart_when_crashed: true,
@@ -244,12 +244,23 @@ const AdvanceCommonConfig = {
   methods: {
     doAuthADB: function () {
       $app.invoke('doAuthADB', {})
+      let _this = this
+      setTimeout(() => {
+        _this.getEnabledServices()
+      }, 2000)
     },
+    copyText: function (text) {
+      console.log('复制文本：', text)
+      $app.invoke('copyText', { text })
+    },
+    getEnabledServices: function () {
+      $nativeApi.request('getEnabledServices', {}).then(resp => {
+        this.enabledServices = resp.enabledServices
+      })
+    }
   },
   mounted() {
-    $nativeApi.request('getEnabledServices', {}).then(resp => {
-      this.enabledServices = resp.enabledServices
-    })
+    this.getEnabledServices()
   },
   template: `
   <div>
@@ -270,7 +281,11 @@ const AdvanceCommonConfig = {
           <van-cell v-else v-for="service in accessibilityServices" :title="service" :key="service" style="overflow:auto;" />
           <van-divider content-position="left">当前已启用的无障碍服务</van-divider>
           <van-cell v-if="enabledAccessibilityServices.length==0" title="无"/>
-          <van-cell v-else v-for="service in enabledAccessibilityServices" :title="service" :key="service" style="overflow:auto;" />
+          <van-cell v-else v-for="service in enabledAccessibilityServices" :title="service" :key="service" style="overflow:auto;">
+            <template #right-icon>
+              <van-button plain hairline type="primary" size="mini" style="margin-left: 0.3rem;width: 2rem;" @click="copyText(service)">复制</van-button>
+            </template>
+          </van-cell>
         </van-collapse-item>
       </van-collapse>
       <switch-cell title="是否使用模拟滑动" v-model="configs.useCustomScrollDown" />

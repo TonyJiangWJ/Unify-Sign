@@ -8,7 +8,7 @@ let logUtils = singletonRequire('LogUtils')
 let signTaskService = singletonRequire('SignTaskService')
 let OpenCvUtil = require('../lib/OpenCvUtil.js')
 let formatDate = require('../lib/DateUtil.js')
-let paddleOcr = singletonRequire('PaddleOcrUtil')
+let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
 function BaseSignRunner () {
   this.name = ''
@@ -184,8 +184,8 @@ function BaseSignRunner () {
   }
 
   this.captureAndCheckByOcr = function (regex, content, region, delay, clickIt, loop) {
-    if (!paddleOcr.enabled) {
-      logUtils.warnInfo('当前AutoJS不支持PaddleOcr')
+    if (!localOcrUtil.enabled) {
+      logUtils.warnInfo('当前AutoJS不支持OCR')
       return null
     }
     delay = delay || 800
@@ -195,7 +195,7 @@ function BaseSignRunner () {
     let screen = commonFunctions.captureScreen()
     logUtils.debugInfo('准备OCR查找目标：' + content)
     if (screen) {
-      let findText = paddleOcr.recognizeWithBounds(screen, [config.device_width / 2, config.device_height * 0.7], regex)
+      let findText = localOcrUtil.recognizeWithBounds(screen, [config.device_width / 2, config.device_height * 0.7], regex)
       if (findText && findText.length > 0) {
         let collect = findText[0].bounds
         logUtils.debugInfo('OCR找到了目标：' + content)

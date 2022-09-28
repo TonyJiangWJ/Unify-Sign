@@ -12,6 +12,7 @@
   - 柚番短视频 自动刷泡泡 APP会检测无障碍因此需要[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)并关闭原版AutoJS的无障碍权限；
 - 因为AutoJSPro的限制，Pro下部分签到将无法正常执行，部分签到用到了本地OCR建议使用[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)
 - 因为部分应用会检测集中某个时间点的签到，检测为异常行为 因此脚本在每天第一次启动时会随机延迟一定的时间，所以可以对 `main.js` 设置每天0点的定时任务 如果需要绕过则需要设置两次定时任务；脚本在第二次运行时会直接运行 不再等待随机时间
+- 推荐下载ocr插件[mlkit-ocr插件下载](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.1/mlkit-ocr-plugin-latest.apk)
 
 ## 使用
 
@@ -76,7 +77,7 @@
     let widgetUtils = singletonRequire('WidgetUtils')
     let automator = singletonRequire('Automator')
     let commonFunctions = singletonRequire('CommonFunction')
-    let paddleOcr = singletonRequire('PaddleOcrUtil')
+    let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
     // 引入基本类
     let BaseSignRunner = require('./BaseSignRunner.js')

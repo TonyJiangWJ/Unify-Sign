@@ -8,7 +8,7 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
-let paddleOcr = singletonRequire('PaddleOcrUtil')
+let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
@@ -73,7 +73,7 @@ function SignRunner () {
       sleep(1000)
       // id 找不到 用图片查找
       mine = this.wrapImgPointWithBounds(this.captureAndCheckByImg(mine_base64, '我的'))
-      if (!mine && paddleOcr.enabled) {
+      if (!mine && localOcrUtil.enabled) {
         FloatyInstance.setFloatyText('未找到 我的 准备用OCR方式查找')
         sleep(1000)
         mine = this.wrapOcrPointWithBounds(this.captureAndCheckByOcr('我的', '我的', [config.device_width / 2, config.device_height * 0.7]))
