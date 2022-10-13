@@ -87,8 +87,8 @@ const TaskScheduleList = {
       let executeStart = Math.min(schedule.executeTime, new Date().getTime())
       schedule.executeCost = schedule.executeEndTime - (schedule.realExecuteTime || executeStart)
       schedule.realExecuteTime = schedule.realExecuteTime || executeStart
-      let { id, executeStatus, editExecuteTime, executeCost, realExecuteTime } = schedule
-      $nativeApi.request('updateSchedule', { id, executeStatus, editExecuteTime, executeCost, realExecuteTime }).then(resp => {
+      let { id, executeStatus, executeEndTime, editExecuteTime, executeCost, realExecuteTime } = schedule
+      $nativeApi.request('updateSchedule', { id, executeStatus, executeEndTime, editExecuteTime, executeCost, realExecuteTime }).then(resp => {
         if (resp.success) {
           this.listSchedules()
         } else {
@@ -174,6 +174,17 @@ const TaskScheduleList = {
           this.listSchedules()
         })
       })
+    },
+    regenerateNotExecuted: function () {
+      vant.Dialog.confirm({
+        title: '确认重新生成？',
+        message: '此操作会删除未执行的执行计划并重新生成'
+      }).then(() => {
+        $nativeApi.request('regenerateTaskSchedulesNotExecuted').then(resp => {
+          this.listTasks()
+          this.listSchedules()
+        })
+      })
     }
   },
   mounted () {
@@ -186,6 +197,10 @@ const TaskScheduleList = {
     <tip-block>
       <van-button plain hairline type="warning" size="mini" style="margin: 0.3rem;" @click="generateSchedules">生成执行计划</van-button>
       <span>只生成不存在的执行计划</span>
+    </tip-block>
+    <tip-block>
+      <van-button plain hairline type="danger" size="mini" style="margin: 0.3rem;" @click="regenerateNotExecuted">重新生成未执行的</van-button>
+      <span>删除未执行的执行计划并重新生成</span>
     </tip-block>
     <tip-block>
       <van-button plain hairline type="danger" size="mini" style="margin: 0.3rem;" @click="regenerateSchedules">全部重新生成</van-button>

@@ -58,6 +58,36 @@ function BaseSignRunner () {
   }
 
   /**
+   * 创建执行计划
+   * 当前整体框架设计是 会自动合并五分钟内的签到任务 因此任务间最短间隔为5分钟 小于五分钟的将自动延迟到五分钟后执行
+   *
+   * @param {string} taskCode 
+   * @param {timestamp|number} targetTime 目标执行时间 
+   */
+  this.createNextSchedule = function (taskCode, targetTime) {
+    if (!targetTime || targetTime < new Date() + 5 * 60000) {
+      logUtils.warnInfo('任务执行间隔不能小于五分钟 重置为五分钟后执行')
+      targetTime = new Date().getTime() + 5 * 60000
+    }
+    let date = formatDate(new Date(), 'yyyy-MM-dd')
+    let newSchedule = {
+      taskCode: taskCode,
+      triggerType: 2,
+      executeStatus: 'A',
+      executeTime: targetTime,
+      executeDate: date,
+    }
+    let scheduleList = signTaskService.listTaskScheduleByDate(date, taskCode)
+    let exists = scheduleList.filter(schedule => schedule.executeStatus === 'A' && Math.abs(schedule.executeTime - targetTime) < 5 * 60000)
+    if (exists && exists.length > 1) {
+      logUtils.warnInfo(['任务[{}]已存在五分钟内的执行计划{}个 跳过创建', taskCode, exists.length])
+      return
+    }
+    let id = signTaskService.insertTaskSchedule(newSchedule)
+    logUtils.debugInfo(['创建任务[{}]执行计划成功 id：{}', taskCode, id])
+  }
+
+  /**
    * 判断今天子任务是否已经执行过
    */
   this.isSubTaskExecuted = function (subTaskInfo, checkOnly) {
@@ -328,8 +358,8 @@ function BaseSignRunner () {
     let now = new Date()
     let date = formatDate(now, 'yyyy-MM-dd')
     let scheduleList = signTaskService.listTaskScheduleByDate(date, taskCode)
-    // 过滤当天 未执行且到达时间的
-    scheduleList.filter(schedule => schedule.executeStatus === 'A' && schedule.executeTime <= now.getTime())
+    // 过滤当天 未执行且到达时间的 五分钟内的也计算为已启动用于合并短时间内的任务避免重复启动
+    scheduleList.filter(schedule => schedule.executeStatus === 'A' && schedule.executeTime <= now.getTime() + 5 * 60000)
       .forEach(schedule => {
         let forUpdate = {
           executeStatus: 'P',
@@ -345,7 +375,11 @@ function BaseSignRunner () {
     let date = formatDate(now, 'yyyy-MM-dd')
     let scheduleList = signTaskService.listTaskScheduleByDate(date, taskCode)
     // 过滤当天 未执行且到达时间的
-    scheduleList.filter(schedule => schedule.executeStatus === 'P' && schedule.executeTime <= now.getTime())
+    scheduleList.filter(schedule => {
+      // 已经标记执行中，且执行时间小于当前时间 或者 等待执行 但是执行时间小于当前时间的（将所有短时间内重复的标记为已完成）
+      return schedule.executeStatus === 'P' && schedule.realExecuteTime <= now.getTime()
+        || schedule.executeStatus === 'A' && schedule.executeTime <= now.getTime()
+    })
       .forEach(schedule => {
         let forUpdate = {
           executeStatus: 'S',

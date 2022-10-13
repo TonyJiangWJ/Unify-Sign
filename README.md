@@ -40,9 +40,11 @@
 
 ### 定义任务
 
-- 定义任务编号及名称，增加到config.js的supported_signs字段中
+- 定义任务编号及名称，创建文件 `extends/CustomConfig.js` 可以参考 `extends/CustomConfig-demo.js`
 
   ```javascript
+  module.exports = {
+    // 配置自定义的签到任务定义信息
     supported_signs: [
       // ...
       {
@@ -61,6 +63,33 @@
       },
       // ...
     ]
+  }
+  ```
+
+- 增加自定义签到任务的配置，创建文件`extends/CustomSignConfig.js` 可以参考 `extends/CustomSignConfig-demo.js`
+
+  ```javascript
+  module.exports = function (binder) {
+    // 扩展配置
+    /**
+     * param1: 指定自定义配置的前缀 需要保持唯一
+     * param2: 指定自定义配置的初始化值 仅仅保存图片信息时传递空对象即可
+     * param3: 指定自定义图像配置的字段列表
+     */
+    binder.bindCustomSignConfig('bb_farm', {
+      click_point: {
+        x: 100,
+        y: 100,
+      }
+    }, [
+      'collect_btn_alipay', 'entry_check_alipay', 'task_btn_alipay',
+      'collect_btn_taobao', 'entry_check_taobao', 'task_btn_taobao'
+    ])
+  }
+
+  // 在签到代码中调用时参考如下 使用config.{自定义配置前缀}_config来获取配置参数
+  let { config } = require('../config.js')(runtime, global)
+  console.log('自定义签到配置：', JSON.stringify(config.bb_farm_config.click_point))
   ```
 
 - 任务配置完成后将在第一次运行时自动创建数据库配置，后续再在可视化配置中配置每天的执行时间

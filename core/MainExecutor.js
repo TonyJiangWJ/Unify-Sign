@@ -27,7 +27,9 @@ function MainExecutor () {
             restart = true
           }
         } catch (e) {
+          logUtils.errorInfo('执行异常，' + e)
           FloatyInstance.setFloatyInfo({ x: config.device_width * 0.4, y: config.device_height / 2 }, target.name + ' 执行异常，请检查代码')
+          commonFunctions.minimize()
           sleep(1000)
           commonFunctions.printExceptionStack(e)
         }

@@ -7,9 +7,11 @@ let configPath = currentWorkPath + '/config_data/'
 
 console.show()
 
-exportConfigs(config.dingdong_config, 'dingdong/')
-exportConfigs(config.weibo_config, 'weibo/')
-exportConfigs(config.bb_farm_config, 'bbfarm/')
+if (config.custom_config_keys) {
+  config.custom_config_keys.forEach(key => {
+    exportConfigs(config[key+'_config'], key + '/')
+  })
+}
 
 function exportConfigs(imageConfig, path) {
   path = configPath + path

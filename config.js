@@ -2,12 +2,15 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-09-29 00:24:15
+ * @Last Modified time: 2022-10-02 14:09:48
  * @Description: 
  */
 let currentEngine = engines.myEngine().getSource() + ''
 let isRunningMode = currentEngine.endsWith('/config.js') && typeof module === 'undefined'
 let is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/)
+let extendSignConfig = require('./signConfig.js')
+let custom_config = files.exists('./extends/CustomConfig.js') ? require('./extends/CustomConfig.js') : { supported_signs: [] }
+custom_config = custom_config || { supported_signs: [] }
 let default_config = {
   password: '',
   timeout_unlock: 1000,
@@ -143,7 +146,13 @@ let default_config = {
       script: 'BBFarm.js',
       enabled: true
     },
-  ]
+    {
+      name: '淘宝现金签到',
+      taskCode: 'TaobaoSign',
+      script: 'Taobao-Sign.js',
+      enabled: true
+    },
+  ].concat(custom_config.supported_signs || [])
 }
 // 不同项目需要设置不同的storageName，不然会导致配置信息混乱
 let CONFIG_STORAGE_NAME = 'unify_sign'
@@ -211,39 +220,7 @@ config.overwrite = (key, value) => {
   storages.create(storage_name).put(key, value)
 }
 // 扩展配置
-let workpath = getCurrentWorkPath()
-let configDataPath = workpath + '/config_data/'
-// 叮咚识图配置
-let default_dingdong_config = {
-};
-['mine_base64', 'fishpond_entry', 'fishpond_check', 'fishpond_can_collect',
-  'fishpond_daily_collect', 'fishpond_normal_collect', 'fishpond_continuous_sign', 'fishpond_do_continuous_sign',
-  'fishpond_close_continuous_sign', 'fishpond_close', 'orchard_entry', 'orchard_can_collect', 'orchard_daily_collect',
-  'orchard_normal_collect', 'orchard_check', 'sign_and_get_points'
-].forEach(imageKey => {
-  default_dingdong_config[imageKey] = readImgDataIfExists(configDataPath + 'dingdong/' + imageKey + '.data')
-})
-default_config.dingdong_config = default_dingdong_config
-config.dingdong_config = convertDefaultData(default_dingdong_config, CONFIG_STORAGE_NAME + '_dingdong')
-
-// 微博
-let default_weibo_config = {};
-['sign_btn', 'mine_btn', 'mine_checked_btn', 'signed_icon'].forEach(imageKey => {
-  default_weibo_config[imageKey] = readImgDataIfExists(configDataPath + 'weibo/' + imageKey + '.data')
-})
-default_config.weibo_config = default_weibo_config
-config.weibo_config = convertDefaultData(default_weibo_config, CONFIG_STORAGE_NAME + '_weibo')
-
-// 芭芭农场
-let default_bb_farm_config = {};
-[
-  'collect_btn_alipay', 'entry_check_alipay', 'task_btn_alipay',
-  'collect_btn_taobao', 'entry_check_taobao', 'task_btn_taobao'
-].forEach(imageKey => {
-  default_bb_farm_config[imageKey] = readImgDataIfExists(configDataPath + 'bbfarm/' + imageKey + '.data')
-})
-default_config.bb_farm_config = default_bb_farm_config
-config.bb_farm_config = convertDefaultData(default_bb_farm_config, CONFIG_STORAGE_NAME + '_bb_farm')
+extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
 
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
@@ -262,37 +239,4 @@ if (!isRunningMode) {
   setTimeout(function () {
     engines.execScriptFile(files.cwd() + "/可视化配置.js", { path: files.cwd() })
   }, 30)
-}
-
-function convertDefaultData (default_config, config_storage_name) {
-  let config_storage = storages.create(config_storage_name)
-  let configData = {}
-  Object.keys(default_config).forEach(key => {
-    let storageValue = config_storage.get(key, default_config[key])
-    if (storageValue == '') {
-      storageValue = default_config[key]
-    }
-    configData[key] = storageValue
-  })
-  return configData
-}
-
-function getCurrentWorkPath () {
-  let currentPath = files.cwd()
-  if (files.exists(currentPath + '/main.js')) {
-    return currentPath
-  }
-  let paths = currentPath.split('/')
-
-  do {
-    paths = paths.slice(0, paths.length - 1)
-    currentPath = paths.reduce((a, b) => a += '/' + b)
-  } while (!files.exists(currentPath + '/main.js') && paths.length > 0)
-  if (paths.length > 0) {
-    return currentPath
-  }
-}
-
-function readImgDataIfExists(path) {
-  return files.exists(path) ? files.read(path) : ''
 }

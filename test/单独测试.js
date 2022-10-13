@@ -7,8 +7,8 @@ let signTaskService = singletonRequire('SignTaskService')
 let signTaskManager = singletonRequire('SignTaskManager')
 let logUtils = singletonRequire('LogUtils')
 let formatDate = require('../lib/DateUtil.js')
-
-let testTaskCodes = ['BBFarm'].reduce((a, b) => { a[b] = 1; return a; }, {})
+FloatyInstance.enableLog()
+let testTaskCodes = ['TaobaoSign'].reduce((a, b) => { a[b] = 1; return a; }, {})
 console.log('测试任务：', JSON.stringify(testTaskCodes))
 // let enabledSigns = config.supported_signs.filter(target => target.enabled)
 if (config.supported_signs && config.supported_signs.length > 0) {
