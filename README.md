@@ -9,23 +9,37 @@
   - 淘金币签到
   - 叮咚签到
   - 微博积分签到
-  - 柚番短视频 自动刷泡泡 APP会检测无障碍因此需要[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)并关闭原版AutoJS的无障碍权限；
-- 因为AutoJSPro的限制，Pro下部分签到将无法正常执行，部分签到用到了本地OCR建议使用[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)
-- 因为部分应用会检测集中某个时间点的签到，检测为异常行为 因此脚本在每天第一次启动时会随机延迟一定的时间，所以可以对 `main.js` 设置每天0点的定时任务 如果需要绕过则需要设置两次定时任务；脚本在第二次运行时会直接运行 不再等待随机时间
-- 推荐下载ocr插件[mlkit-ocr插件下载](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.1/mlkit-ocr-plugin-latest.apk)
+  - 芭芭农场签到
+  - 手机淘宝现金签到
+  - ~~柚番短视频 自动刷泡泡~~  
+- 部分APP会检测无障碍因此需要[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)并关闭原版AutoJS的无障碍权限；
+- 部分签到用到了本地OCR建议使用[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.22.0621.alpha/AutoJS.fakeIdlefish.arm64.20220621.apk)或下载ocr插件[mlkit-ocr插件下载](https://github.com/TonyJiangWJ/Auto.js/releases/download/v4.1.1/mlkit-ocr-plugin-latest.apk)
+- 因为AutoJSPro的限制，Pro下部分签到将无法正常执行；
 
 ## 使用
 
+- 因为部分应用会检测集中某个时间点的签到，检测为异常行为。因此脚本实现的逻辑为每天第一次运行时创建随机的执行计划。所以需要对 `main.js` 设置每天0点的定时任务，用以创建当天的执行计划。
 - 运行 `可视化配置.js` 进入 `签到设置`，勾选需要运行的签到任务。对于任务的执行时间设置，选中任务项右划调出按钮 `设置执行时间` 点击进入设置界面，每个任务可以单独设置执行时间或者直接按分组执行，分组需要在 `管理执行分组` 中增加和配置
 - 对于需要配置图像的任务，在任务项左滑调出 `更多设置` 进入设置页面配置相应的内容，否则无法正常执行，例如 `叮咚签到` 需要配置各个图像节点
-- 脚本每天第一次运行会自动创建当天所有任务的执行计划，因此需要对 `main.js` 创建每天0点的定时任务
 - 执行计划生成完成后可以进入 `签到设置`点击 `查看执行计划` 进行查看和管理，也可以重新生成执行计划
+- 可以在配置界面中自行创建执行分组，将不同任务分在不同的组以实现某一时间点的批量执行。
+  - 比如叮咚为三个子任务：积分、鱼塘和果园：
+  - 将积分签到绑定到默认分组
+  - 为鱼塘和果园创建三个分组，随机时间段设置：1：7-9点、2：10-12点、3：16-18点，然后绑定签到任务和对应分组。这样鱼塘和果园就能一天三次完整的领取早中晚的奖励。
 
 ## 其他的脚本
 
 - [蚂蚁森林脚本传送门](https://github.com/TonyJiangWJ/Ant-Forest)
 - [蚂蚁庄园脚本传送门](https://github.com/TonyJiangWJ/Ant-Manor)
 - [开发框架传送门](https://github.com/TonyJiangWJ/AutoScriptBase)
+
+## 推广
+
+- 开发不易，请让我薅点羊毛
+
+  ```log
+   下载【抖音极速版】，填我邀请码【8720491405】，新用户当天必得现金红包，可直接提现
+  ```
 
 ## 界面预览
 
