@@ -106,12 +106,13 @@ function SignRunner () {
 
   this.browseAds = function () {
     sleep(1000)
-    let moreCoins = widgetUtils.widgetGetOne('\\+[67][268]00', null, true)
-    if (moreCoins) {
+    let moreCoins = widgetUtils.widgetGetOne('\\+[6789]\\d{3}', null, true, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
+    if (moreCoins && moreCoins.content > '+6000') {
       this.checkCountdownBtn()
       this.displayButtonAndClick(moreCoins.target, moreCoins.content)
       sleep(1000)
       let hangout = widgetUtils.widgetGetOne('去逛逛')
+      let noMore = false
       if (this.displayButtonAndClick(hangout, '去逛逛')) {
         sleep(1000)
         this.doBrowsing()
@@ -122,6 +123,7 @@ function SignRunner () {
         let finished = widgetUtils.widgetGetOne('已完成')
         // 点进去 然后返回
         if (this.displayButtonAndClick(finished, '已完成')) {
+          noMore = true
           sleep(1000)
           automator.back()
         }
@@ -132,7 +134,9 @@ function SignRunner () {
       }
       this.checkCountdownBtn()
       sleep(1000)
-      this.browseAds()
+      if (!noMore) {
+        this.browseAds()
+      }
     } else {
       logUtils.debugInfo(['逛一逛任务已完成，查找+100并设置定时任务'])
       this.checkCountdownBtn(true)

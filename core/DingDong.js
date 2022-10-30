@@ -86,11 +86,13 @@ function SignRunner () {
       }, '找到了 我的 按钮')
       sleep(600)
       automator.click(mine.bounds().centerX(), mine.bounds().centerY())
-      sleep(1000)
+      sleep(3000)
       // 领积分
       this.points()
+      sleep(1000)
       // 鱼塘
       this.fishpond()
+      sleep(1000)
       // 果园
       this.orchard()
       if (this.isSubTaskExecuted(CREDIT_SIGN, true)

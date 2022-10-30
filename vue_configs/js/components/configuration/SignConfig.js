@@ -71,9 +71,10 @@ const SignConfig = {
         ]
       },
       settingPage: {
-        '叮咚签到': '/basic/sign/dingdong',
-        '微博积分签到': '/basic/sign/weibo',
-        '芭芭农场': '/basic/sign/bbFarm',
+        'DingDong': '/basic/sign/dingdong',
+        'Weibo': '/basic/sign/weibo',
+        'BBFarm': '/basic/sign/bbFarm',
+        'MiHoYo': '/basic/sign/mihoyo'
       }
     }
   },
@@ -85,11 +86,11 @@ const SignConfig = {
       console.log('变更索引：', index)
       this.$refs.checkboxes[index].toggle()
     },
-    doSetting (name) {
-      this.$router.push(this.settingPage[name])
+    doSetting (taskCode) {
+      this.$router.push(this.settingPage[taskCode])
     },
-    hasSetting (name) {
-      return !!this.settingPage[name]
+    hasSetting (taskCode) {
+      return !!this.settingPage[taskCode]
     },
     toScheduleList: function () {
       this.$router.push('/basic/sign/scheduleList')
@@ -135,8 +136,7 @@ const SignConfig = {
           </van-cell>
           <template #right>
             <div style="display:flex;height: 100%;">
-              <!--<van-button square type="danger" text="切换执行状态" @click="toggleExecuted(supportedSign.name)" style="height: 100%"/>-->
-              <van-button square type="primary" text="更多设置" @click="doSetting(supportedSign.name)" v-if="hasSetting(supportedSign.name)" style="height: 100%"/>
+              <van-button square type="primary" text="更多设置" @click="doSetting(supportedSign.taskCode)" v-if="hasSetting(supportedSign.taskCode)" style="height: 100%"/>
             </div>
           </template>
         </van-swipe-cell>
