@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-09-06 14:44:16
+ * @Last Modified time: 2022-11-16 19:07:23
  * @Description: 
  */
 
@@ -24,7 +24,7 @@ function CreditRunner () {
   this.collectFamily = false
 
   this.openCreditPage = function () {
-    commonFunctions.launchPackage(_package_name, false)
+    commonFunctions.launchPackage(_package_name)
     sleep(500)
     if (config.is_alipay_locked) {
       alipayUnlocker.unlockAlipay()
