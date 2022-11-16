@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-10-02 14:09:48
+ * @Last Modified time: 2022-11-16 19:57:30
  * @Description: 
  */
 let currentEngine = engines.myEngine().getSource() + ''
@@ -152,6 +152,12 @@ let default_config = {
       script: 'Taobao-Sign.js',
       enabled: true
     },
+    {
+      name: '饿了么吃货豆',
+      taskCode: 'Eleme',
+      script: 'Eleme.js',
+      enabled: true
+    }
   ].concat(custom_config.supported_signs || [])
 }
 // 不同项目需要设置不同的storageName，不然会导致配置信息混乱

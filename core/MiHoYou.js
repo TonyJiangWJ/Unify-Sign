@@ -13,7 +13,7 @@ function SignRunner () {
   let _icon_img = config.mihoyo_config.reward_icon
 
   this.openMiHoYouPage = function () {
-    commonFunctions.launchPackage(_package_name, false)
+    commonFunctions.launchPackage(_package_name)
     this.awaitAndSkip(['\\s*允许\\s*', '\\s*跳过\\s*', '.*知道了.*', '下次再说'])
     sleep(500)
     let yuanshen = widgetUtils.widgetGetOne('原神')
