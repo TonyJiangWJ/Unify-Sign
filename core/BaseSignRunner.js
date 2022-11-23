@@ -327,6 +327,10 @@ function BaseSignRunner () {
     return null
   }
 
+  this.boundsToPosition = function (bounds) {
+    return { x: bounds.centerX(), y: bounds.centerY() }
+  }
+
   /**
    * abstract funcs
    */
