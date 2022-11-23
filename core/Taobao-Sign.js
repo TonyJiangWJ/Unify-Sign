@@ -30,7 +30,9 @@ function SignRunner () {
       sleep(1000)
       this.checkDailySign()
       this.browseAds()
-      this.setExecuted()
+      if (this.signed) {
+        this.setExecuted()
+      }
     } else {
       logUtils.warnInfo(['未找到签到按钮'])
     }
@@ -43,13 +45,22 @@ function SignRunner () {
       let find = localOcrUtil.recognizeWithBounds(screen, null, '.*立即签到.*')
       if (find && find.length > 0) {
         let bounds = find[0].bounds
-        FloatyInstance.setFloatyInfo({ x: bounds.centerX(), y: bounds.centerY() }, '立即签到')
+        FloatyInstance.setFloatyInfo(this.boundsToPosition(bounds), '立即签到')
         sleep(1000)
         automator.click(bounds.centerX(), bounds.centerY())
         sleep(1000)
+        this.signed = true
       } else {
-        FloatyInstance.setFloatyText('未找到立即签到')
+        FloatyInstance.setFloatyText('未找到立即签到，查找提醒我')
         sleep(1000)
+        find = localOcrUtil.recognizeWithBounds(screen, null, '.*提醒我.*')
+        if (find && find.length > 0) {
+          FloatyInstance.setFloatyInfo(this.boundsToPosition(find[0].bounds), '提醒我')
+          this.signed = true
+        } else {
+          FloatyInstance.setFloatyText('未找到提醒我，签到失败')
+          sleep(1000)
+        }
       }
     } else {
       warnInfo(['获取截图失败或不支持OCR 暂未实现 相应签到逻辑'])
@@ -58,7 +69,8 @@ function SignRunner () {
 
   this.checkCountdownBtn = function (waitForNext) {
     sleep(1000)
-    let plusOneHundred = widgetUtils.widgetGetOne('\\+100', null, null, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
+    // 艹 奖励降低到了80
+    let plusOneHundred = widgetUtils.widgetGetOne('\\+\\d{2,3}', null, null, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
     if (plusOneHundred) {
       let screen = commonFunctions.captureScreen()
       if (screen && localOcrUtil.enabled) {
@@ -107,7 +119,7 @@ function SignRunner () {
   this.browseAds = function () {
     sleep(1000)
     let moreCoins = widgetUtils.widgetGetOne('\\+[6789]\\d{3}', null, true, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
-    if (moreCoins && moreCoins.content > '+6000') {
+    if (moreCoins && moreCoins.content) {
       this.checkCountdownBtn()
       this.displayButtonAndClick(moreCoins.target, moreCoins.content)
       sleep(1000)

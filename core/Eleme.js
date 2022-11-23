@@ -48,12 +48,19 @@ function SignRunner () {
           FloatyInstance.setFloatyInfo({x: boundsInfo.centerX(), y: boundsInfo.centerY()}, '立即签到')
           sleep(500)
           automator.clickCenter(signBtn)
+          sleep(1000)
+          let checkIn = widgetUtils.widgetGetOne('.*收下.*')
+          if (checkIn) {
+            automator.clickCenter(checkIn)
+          }
+          this.doHangTasks()
           this.setExecuted()
         } else {
           FloatyInstance.setFloatyText('未找到立即签到按钮')
           let signed = widgetUtils.widgetGetOne('今日已签到.*')
           if (signed) {
             FloatyInstance.setFloatyText('今日已签到')
+            this.doHangTasks()
             this.setExecuted()
           }
         }
@@ -65,6 +72,40 @@ function SignRunner () {
     }
     sleep(1000)
     commonFunctions.minimize()
+  }
+
+  /**
+   * 执行逛逛任务
+   */
+  this.doHangTasks = function () {
+    let checkBtn = selector().textMatches('.*去(浏览|逛逛|完成).*').depth(20).findOne(config.timeout_findOne)
+    // 增加限制 避免进入死循环 这里大概就11个
+    let limit = 15
+    while (checkBtn && limit-- > 0) {
+      FloatyInstance.setFloatyText('找到了去(浏览|逛逛|完成)')
+      sleep(500)
+      checkBtn.click()
+      sleep(2000)
+      let total = 20
+      while (total-- > 0) {
+        sleep(1000)
+        FloatyInstance.setFloatyText('等待' + total + '秒')
+      }
+      FloatyInstance.setFloatyText('准备返回')
+      sleep(1000)
+      automator.back()
+      sleep(1000)
+      let l = 3
+      while (!widgetUtils.widgetWaiting('逛逛任务') && l-- > 0) {
+        automator.back()
+        sleep(1000)
+      }
+      sleep(2000)
+      checkBtn = selector().textMatches('.*去(浏览|逛逛|完成).*').depth(20).findOne(config.timeout_findOne)
+    }
+    if (!checkBtn) {
+      FloatyInstance.setFloatyText('未找到去(浏览|逛逛|完成)')
+    }
   }
 
   this.openEleme = function () {
