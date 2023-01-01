@@ -39,6 +39,11 @@ function SignRunner () {
   }
 
   this.checkDailySign = function () {
+    if (commonFunctions.checkIsTaobaoSigned()) {
+      FloatyInstance.setFloatyText('今日已完成签到')
+      this.signed = true
+      return
+    }
     sleep(1000)
     let screen = commonFunctions.captureScreen()
     if (screen && localOcrUtil.enabled) {
@@ -49,7 +54,13 @@ function SignRunner () {
         sleep(1000)
         automator.click(bounds.centerX(), bounds.centerY())
         sleep(1000)
-        this.signed = true
+        find = localOcrUtil.recognizeWithBounds(screen, null, '.*提醒我.*')
+        if (find && find.length > 0) {
+          FloatyInstance.setFloatyInfo(this.boundsToPosition(find[0].bounds), '提醒我')
+          this.signed = true
+          // 找到了提醒我才能确保确实已签到
+          commonFunctions.setTaobaoSigned()
+        }
       } else {
         FloatyInstance.setFloatyText('未找到立即签到，查找提醒我')
         sleep(1000)
@@ -57,8 +68,17 @@ function SignRunner () {
         if (find && find.length > 0) {
           FloatyInstance.setFloatyInfo(this.boundsToPosition(find[0].bounds), '提醒我')
           this.signed = true
+          // 找到了提醒我才能确保确实已签到
+          commonFunctions.setTaobaoSigned()
         } else {
-          FloatyInstance.setFloatyText('未找到提醒我，签到失败')
+          if (commonFunctions.checkTaobaoFailedCount() > 3) {
+            FloatyInstance.setFloatyText('查找提醒我失败多次，标记为签到成功')
+            logUtils.warnInfo(['寻找 提醒我 失败多次，直接标记为成功，请确认是否已经正常签到'], true)
+            this.signed = true
+          } else {
+            FloatyInstance.setFloatyText('未找到提醒我，签到失败')
+            commonFunctions.increaseTbFailedCount()
+          }
           sleep(1000)
         }
       }
@@ -104,7 +124,7 @@ function SignRunner () {
             sleep(1000)
           }
         } else {
-          this.displayButton(plusOneHundred, '可以领100')
+          this.displayButton(plusOneHundred, '可以领' + (plusOneHundred.desc() || plusOneHundred.text()))
           automator.clickCenter(plusOneHundred)
           sleep(1000)
           if (this.closeDialogIfPossible()) {

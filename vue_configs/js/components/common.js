@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-11-29 13:16:53
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2021-01-09 18:47:51
+ * @Last Modified time: 2022-12-08 16:25:11
  * @Description: 组件代码，传统方式，方便在手机上进行修改
  */
 
@@ -28,6 +28,26 @@ const VALIDATOR = {
   COLOR: {
     validate: (v) => /^#[\dabcdef]{6}$/i.test(v),
     message: () => '颜色值格式不正确'
+  },
+  // 随机范围
+  RANDOM_RANGE: {
+    validate: () => false,
+    message: v => {
+      if (v) {
+        let rangeCheckRegex = /^(\d+)-(\d+)$/
+        if (rangeCheckRegex.test(v)) {
+          let execResult = rangeCheckRegex.exec(v)
+          let start = parseInt(execResult[1])
+          let end = parseInt(execResult[2])
+          if (start > end || start <= 0) {
+            return '随机范围应当大于零，且 start < end'
+          }
+        } else {
+          return '随机范围请按此格式输入: 5-10'
+        }
+      }
+      return ''
+    }
   }
 }
 
@@ -104,8 +124,8 @@ let mixin_common = {
         this.onConfigLoad(config)
       })
     },
-    onConfigLoad: function (config) {},
-    onSaveConfig: function () {},
+    onConfigLoad: function (config) { },
+    onSaveConfig: function () { },
     doSaveConfigs: function (deleteFields) {
       console.log('执行保存配置')
       let newConfigs = this.filterErrorFields(this.configs)
@@ -152,7 +172,7 @@ let mixin_common = {
   mounted () {
     this.loadConfigs()
   },
-  destroyed() {
+  destroyed () {
     console.log('保存当前界面配置')
     this.saveConfigs()
   }
@@ -847,6 +867,123 @@ Vue.component('switch-cell', resolve => {
     `
   })
 })
+
+const FileSelector = {
+  mixins: [mixin_common],
+  name: 'FileSelector',
+  props: {
+    title: '',
+    initSelectPath: '',
+    value: Boolean,
+    logFileMatcher: {
+      type: Function,
+      default: v => true,
+    }
+  },
+  model: {
+    prop: 'value',
+    event: 'select-change'
+  },
+  data () {
+    return {
+      showFileSelectDialog: this.value,
+      currentSelectPath: this.initSelectPath,
+      readFilePath: '',
+      files: [
+        { name: '..', type: 'parent' },
+        { name: 'logs/', type: 'dir', isDir: true },
+        { name: '脚本/', type: 'dir', isDir: true },
+        { name: 'logs/', type: 'dir', isDir: true },
+        { name: '脚本/', type: 'dir', isDir: true },
+        { name: 'logs/', type: 'dir', isDir: true },
+        { name: '脚本/', type: 'dir', isDir: true },
+        { name: 'logs/', type: 'dir', isDir: true },
+        { name: '脚本/', type: 'dir', isDir: true },
+        { name: 'logs/', type: 'dir', isDir: true },
+        { name: '脚本/', type: 'dir', isDir: true },
+        { name: 'login.log', type: 'log', fileSize: 123339 },
+        { name: 'log.txt', type: 'txt', fileSize: 111 },
+        { name: 'data', type: 'unknown', fileSize: 123339123339 },
+      ]
+    }
+  },
+  filters: {
+    fileSizeStr: fileSize => {
+      if (!fileSize) {
+        return '0 B'
+      } else {
+        return fileSize < 1024 ? fileSize + ' B' :
+          fileSize < 1024 * 1024 ? (fileSize / 1024).toFixed(2) + ' KB' :
+            fileSize < 1024 * 1024 * 1024 ? (fileSize / 1024 / 1024).toFixed(2) + ' MB' : (fileSize / 1024 / 1024 / 1024).toFixed(2) + ' GB'
+      }
+    }
+  },
+  watch: {
+    value: function () {
+      this.showFileSelectDialog = this.value
+    },
+    showFileSelectDialog: function (v) {
+      this.$emit('select-change', v)
+    }
+  },
+  methods: {
+    listFiles: function (path) {
+      $nativeApi.request('listLogFiles', { filePath: path || this.currentSelectPath, logFileMatcher: this.logFileMatcher }).then(({ fileResult }) => {
+        if (fileResult.error) {
+          $app.invoke('toastLog', { message: fileResult.error })
+          return
+        }
+        this.files = [{ name: '..', type: 'parent' }].concat(fileResult.resultList || [])
+        this.currentSelectPath = fileResult.path
+      })
+    },
+    selectFile: function (file) {
+      let selectedFilePath = this.currentSelectPath + '/' + file.name
+      if (file.isDir) {
+        this.listFiles(selectedFilePath)
+      } else {
+        if (file.name === '..') {
+          this.listFiles(this.currentSelectPath.substring(0, this.currentSelectPath.lastIndexOf('/')))
+          return
+        }
+        // $app.invoke('toastLog', { message: '选择了文件' + selectedFilePath })
+        this.$dialog.confirm({
+          message: '是否加载该文件？'
+        }).then(() => {
+          console.log('选择目标文件：' + selectedFilePath)
+          this.readFilePath = selectedFilePath
+          this.showFileSelectDialog = false
+          this.$emit('file-selected', { filePath: this.readFilePath })
+        }).catch(() => { })
+      }
+    }
+  },
+  mounted () {
+    this.listFiles()
+  },
+  template: `
+  <van-dialog v-model="showFileSelectDialog" :title="title" :show-confirm-button="false" close-on-click-overlay
+    get-container="getContainer">
+    <div style="width: 100%;height: 400px;overflow: scroll;">
+      <van-cell-group>
+        <van-cell v-for="file in files" class="file-cell" @click="selectFile(file)">
+          <template #title>
+            <div class="van-cell__title file-container">
+              <img v-if="file.type==='parent'" class="up-dir">
+              <img v-else-if="file.type==='dir'" class="folder">
+              <img v-else-if="file.type==='log' || file.type==='txt'" class="log">
+              <img v-else class="unknown">
+              <span>{{file.name}}</span>
+              <span v-if="file.type !== 'dir' && file.type !== 'parent'" class="file-size">{{file.fileSize | fileSizeStr}}</span>
+            </div>
+          </template>
+        </van-cell>
+      </van-cell-group>
+    </div>
+  </van-dialog>
+  `
+}
+
 /**
  * Base64ImageViewer
  * 封装是switch按钮
@@ -854,6 +991,7 @@ Vue.component('switch-cell', resolve => {
 Vue.component('base64-image-viewer', resolve => {
   resolve({
     mixins: [mixin_methods],
+    components: { FileSelector },
     props: {
       value: String,
       title: String,
@@ -867,6 +1005,7 @@ Vue.component('base64-image-viewer', resolve => {
       return {
         innerValue: this.value,
         showBase64Inputer: false,
+        showBase64Selector: false,
       }
     },
     computed: {
@@ -885,6 +1024,14 @@ Vue.component('base64-image-viewer', resolve => {
         this.innerValue = v
       }
     },
+    methods: {
+      handleFileSelect: function ({ filePath }) {
+        console.log('准备加载文件内容：' + filePath)
+        $nativeApi.request('loadFileContent', { filePath: filePath }).then(({ fileContent }) => {
+          this.innerValue = fileContent
+        })
+      }
+    },
     template: `
     <div>
       <van-swipe-cell stop-propagation>
@@ -893,9 +1040,84 @@ Vue.component('base64-image-viewer', resolve => {
           <img :src="base64Data" class="base64-img"/>
         </div>
         <template #right>
+          <van-button square type="primary" text="加载文件" @click="showBase64Selector=true" />
           <van-button square type="primary" text="修改Base64" @click="showBase64Inputer=true" />
         </template>
       </van-swipe-cell>
+      <file-selector v-model="showBase64Selector" @file-selected="handleFileSelect" />
+      <van-popup v-model="showBase64Inputer" position="bottom" :style="{ height: '30%', alignItems: 'center' }" :get-container="getContainer">
+        <tip-block>左滑可清空数据</tip-block>
+        <van-swipe-cell stop-propagation style="width:100%">
+          <van-field v-model="innerValue" label="图片base64" type="textarea" placeholder="请输入base64" input-align="right" rows="6" />
+          <template #right>
+            <van-button square type="primary" text="清空" @click="innerValue=''" style="height:100%" />
+          </template>
+        </van-swipe-cell>
+      </van-popup>
+    </div>
+    `
+  })
+})
+
+/**
+ * ImageCell
+ * 封装是switch按钮
+ */
+Vue.component('image-cell', resolve => {
+  resolve({
+    mixins: [mixin_methods],
+    components: { FileSelector },
+    props: {
+      value: String,
+      title: String,
+      titleStyle: String
+    },
+    model: {
+      prop: 'value',
+      event: 'change'
+    },
+    data: function () {
+      return {
+        innerValue: this.value,
+        showBase64Inputer: false,
+        showBase64Selector: false,
+      }
+    },
+    computed: {
+      base64Data: function () {
+        if (this.innerValue) {
+          return 'data:image/png;base64,' + this.innerValue
+        }
+        return null
+      }
+    },
+    watch: {
+      innerValue: function (v) {
+        this.$emit('change', v)
+      },
+      value: function (v) {
+        this.innerValue = v
+      }
+    },
+    methods: {
+      handleFileSelect: function ({ filePath }) {
+        console.log('准备加载文件内容：' + filePath)
+        $nativeApi.request('loadFileContent', { filePath: filePath }).then(({ fileContent }) => {
+          this.innerValue = fileContent
+        })
+      }
+    },
+    template: `
+    <div>
+      <div class="base64-viewer">
+        <img :src="base64Data" class="base64-img"/>
+        <van-cell :title="accountInfo.account" :label="accountInfo.accountName" clickable @click="changeMainAccount(idx)">
+          <template #right-icon>
+            <slot name="right-icon"></slot>
+          </template>
+        </van-cell>
+      </div>
+      <file-selector v-model="showBase64Selector" @file-selected="handleFileSelect" />
       <van-popup v-model="showBase64Inputer" position="bottom" :style="{ height: '30%', alignItems: 'center' }" :get-container="getContainer">
         <tip-block>左滑可清空数据</tip-block>
         <van-swipe-cell stop-propagation style="width:100%">
@@ -956,12 +1178,12 @@ function formatDate (date, fmt) {
 API = {
   post: function (url, data) {
     return axios.post(url, qs.stringify(data))
-    .then(resp => Promise.resolve(resp.data))
-    .catch(e => Promise.reject(e))
+      .then(resp => Promise.resolve(resp.data))
+      .catch(e => Promise.reject(e))
   },
   get: function (url, data) {
     return axios.get(url, data)
-    .then(resp => Promise.resolve(resp.data))
-    .catch(e => Promise.reject(e))
+      .then(resp => Promise.resolve(resp.data))
+      .catch(e => Promise.reject(e))
   }
 }
