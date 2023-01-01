@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-11-16 19:07:23
+ * @Last Modified time: 2022-12-12 11:04:46
  * @Description: 
  */
 
@@ -97,11 +97,14 @@ function CreditRunner () {
   this.checkAndCollect = function () {
     FloatyInstance.setFloatyTextColor('#00ff00')
     FloatyInstance.setFloatyText('等待会员积分控件')
+    sleep(1000)
     let target = widgetUtils.widgetGetOne(/^\s*今日签到.*(\d+)$/)
     if (target) {
       this.displayButtonAndClick(target, '等待会员积分控件成功，准备进入签到页面')
       target = widgetUtils.widgetGetOne('.*已连续签到.*')
       if (target) {
+        this.sign_success = true
+        commonFunctions.setAliCreditsSigned()
         this.displayButtonAndClick(target, '进入签到页面成功')
         automator.back()
       }
@@ -160,8 +163,9 @@ function CreditRunner () {
     FloatyInstance.setFloatyText('准备领取积分')
     this.checkAndCollect()
     FloatyInstance.setFloatyText('领取完毕')
-    // 设置八小时内不再执行
-    this.setExecuted(8 * 3600000)
+    if (this.sign_success || commonFunctions.checkIsAliCreditsSigned()) {
+      this.setExecuted()
+    }
     commonFunctions.minimize(_package_name)
   }
 }

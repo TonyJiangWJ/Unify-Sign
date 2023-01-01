@@ -225,7 +225,7 @@ function BaseSignRunner () {
     let screen = commonFunctions.captureScreen()
     logUtils.debugInfo('准备OCR查找目标：' + content)
     if (screen) {
-      let findText = localOcrUtil.recognizeWithBounds(screen, [config.device_width / 2, config.device_height * 0.7], regex)
+      let findText = localOcrUtil.recognizeWithBounds(screen, region, regex)
       if (findText && findText.length > 0) {
         let collect = findText[0].bounds
         logUtils.debugInfo('OCR找到了目标：' + content)
@@ -242,7 +242,7 @@ function BaseSignRunner () {
       } else if (loop-- > 1) {
         sleep(500)
         logUtils.debugInfo(['未找到目标「{}」进行下一次查找，剩余尝试次数：{}', content, loop])
-        logUtils.debugInfo(['图片数据：[data:image/png;base64,{}]', images.toBase64(images.clip(screen, config.device_width / 2, config.device_height * 0.7, config.device_width - config.device_width / 2, config.device_height - config.device_height * 0.7))])
+        logUtils.debugForDev(['图片数据：[data:image/png;base64,{}]', images.toBase64(images.clip(screen, config.device_width / 2, config.device_height * 0.7, config.device_width - config.device_width / 2, config.device_height - config.device_height * 0.7))])
         return this.captureAndCheckByOcr(regex, content, region, delay, clickIt, loop)
       }
     } else {

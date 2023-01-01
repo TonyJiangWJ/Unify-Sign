@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-29 14:44:49
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-11-12 10:47:05
+ * @Last Modified time: 2022-12-01 11:19:05
  * @Description: https://github.com/TonyJiangWJ/AutoScriptBase
  */
 let { config } = require('../config.js')(runtime, global)
@@ -18,7 +18,16 @@ importClass(com.tony.autojs.search.UiObjectTreeBuilder)
 
 let args = engines.myEngine().execArgv
 console.log('来源参数：' + JSON.stringify(args))
-let immediate = args.immediate
+let inspectConfig = args || {}
+if (typeof inspectConfig.save_data_js == 'undefined') {
+  inspectConfig.save_data_js = true
+}
+if (typeof inspectConfig.save_img_js == 'undefined') {
+  inspectConfig.save_img_js = true
+}
+if (typeof inspectConfig.save_history == 'undefined') {
+  inspectConfig.save_history = true
+}
 commonFunctions.registerOnEngineRemoved(function () {
   logUtils.showCostingInfo()
 }, 'logging cost')
@@ -29,6 +38,12 @@ commonFunctions.registerOnEngineRemoved(function () {
 if (!commonFunctions.ensureAccessibilityEnabled()) {
   toastLog('获取无障碍权限失败')
   exit()
+}
+if (inspectConfig.capture) {
+  if (!requestScreenCapture()) {
+    toastLog('请求截图权限失败')
+    exit()
+  }
 }
 // 清空所有日志
 logUtils.clearLogFile()
@@ -52,9 +67,17 @@ if (!floatyInstance.hasOwnProperty('setFloatyInfo')) {
 floatyInstance.setFloatyInfo({ x: parseInt(config.device_width / 2.7), y: parseInt(config.device_height / 2) }, '即将开始分析', { textSize: 20 })
 sleep(1000)
 let limit = 3
-while (limit > 0 && !immediate) {
+while (limit > 0 && !inspectConfig.immediate) {
   floatyInstance.setFloatyText('倒计时' + limit-- + '秒')
   sleep(1000)
+}
+
+let imgBase64 = null
+if (inspectConfig.capture) {
+  floatyInstance.setFloatyText(' ')
+  sleep(50)
+  let screen = captureScreen()
+  imgBase64 = images.toBase64(screen)
 }
 floatyInstance.setFloatyText('正在分析中...')
 let windowRootsList = getWindowRoots()
@@ -89,15 +112,42 @@ if (root) {
   // 异步写入文件 用于后续分析
   threads.start(function () {
     let savePath = workpath + '/logs/uiobjects.json'
-    let content = JSON.stringify(rawList)
+    let packageName = null
+    // 过滤false和无效值 压缩json大小
+    let content = JSON.stringify(rawList, (key, value) => {
+      if (typeof value === 'undefined' || value === false) {
+        return undefined
+      }
+      if (key == 'packageName') {
+        if (packageName) {
+          return undefined
+        } else {
+          packageName = value
+        }
+      }
+      return value
+    })
     files.write(savePath, content)
-    files.write(workpath + '/logs/data.js', 'let objects = ' + content)
-    files.write(workpath + '/控件可视化/data.js', 'let objects = ' + content)
+    if (inspectConfig.save_data_js) {
+      files.write(workpath + '/logs/data.js', 'let objects = ' + content)
+    }
     let hisPath = workpath + '/logs/hisUiObjects/' + formatDate(new Date(), 'yyyyMMdd/')
-    console.log('ensureDir?' + files.ensureDir(hisPath))
     let time = formatDate(new Date(), 'HHmmss')
-    files.write(hisPath + '/uiobjects.' + time + '.json', content)
-    files.write(hisPath + '/data.' + time + '.js', 'let objects = ' + content)
+    if (inspectConfig.save_history) {
+      console.log('ensureDir?' + files.ensureDir(hisPath))
+      files.write(hisPath + '/uiobjects.' + time + '.json', content)
+      files.write(hisPath + '/data.' + time + '.js', 'let objects = ' + content)
+    }
+    if (inspectConfig.capture && imgBase64) {
+      let base64Content = 'data:image/png;base64,' + imgBase64
+      files.write(workpath + '/logs/img.log', base64Content)
+      inspectConfig.save_history && files.write(hisPath + '/img.' + time + '.log', base64Content)
+      if (inspectConfig.save_img_js) {
+        let jsBase64 = 'let imageBase64=\'' + base64Content + '\''
+        files.write(workpath + '/logs/img.js', jsBase64)
+        inspectConfig.save_history && files.write(hisPath + '/img.' + time + '.js', jsBase64)
+      }
+    }
     toastLog('控件元数据已保存到：' + savePath)
   })
   let resultList = rawList.sort((a, b) => {

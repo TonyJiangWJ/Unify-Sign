@@ -2,18 +2,25 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-09-18 13:40:43
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-09-19 16:50:05
+ * @Last Modified time: 2022-11-28 17:28:42
  * @Description: 免费版专用
  */
 module.exports = function (runtime, scope) {
 
   if (context.getPackageName() !== 'org.autojs.autojspro') {
-    var modules = ["$power_manager"]
+    var modules = ["$zip", "$base64", "$crypto", "$power_manager", "mDialogs"]
+    requireCommonModules(modules)
+  } else {
+    requireCommonModules(["fake_selector"])
+  }
+
+  function requireCommonModules (modules) {
     var len = modules.length
     for (var i = 0; i < len; i++) {
       var m = modules[i]
-      if (typeof scope[m] === 'undefined') {
-        let module = require(getCurrentWorkPath() + '/modules/__' + m + '__')(runtime, scope)
+      let requirePath = getCurrentWorkPath() + '/modules/__' + m + '__.js'
+      if (typeof scope[m] === 'undefined' && files.exists(requirePath)) {
+        let module = require(requirePath)(runtime, scope)
         scope[m] = module
       }
     }

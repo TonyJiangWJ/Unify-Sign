@@ -31,16 +31,9 @@ function SignRunner () {
       FloatyInstance.setFloatyText('找到了我的按钮')
       automator.clickCenter(mine)
       sleep(1000)
-      FloatyInstance.setFloatyText('尝试通过类名获取赚吃货豆控件')
-      let rewardButton = selector().className('android.view.ViewGroup').clickable()
-        .drawingOrder(1).depth(22)
-        .boundsInside(0, 0.35 * config.device_height, 0.3 * config.device_width, 0.7 * config.device_height)
-        .findOne(config.timeout_findOne)
+      FloatyInstance.setFloatyText('通过OCR查找赚吃货豆')
+      let rewardButton = this.captureAndCheckByOcr('.*赚吃货豆.*', '赚吃货豆', null, null, true, 3)
       if (rewardButton) {
-        let boundsInfo = rewardButton.bounds()
-        FloatyInstance.setFloatyInfo({x: boundsInfo.centerX(), y: boundsInfo.centerY()}, '成功获取赚吃货豆控件')
-        sleep(500)
-        automator.clickCenter(rewardButton)
         sleep(1000)
         let signBtn = widgetUtils.widgetGetOne('立即签到')
         if(signBtn) {
