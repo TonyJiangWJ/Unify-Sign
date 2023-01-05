@@ -8,3 +8,4 @@ ExternalUnlockDevice.js
 .lh/
 *.txt
 *.txt.*
+logs/

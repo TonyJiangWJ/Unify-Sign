@@ -201,7 +201,7 @@ function BaseSignRunner () {
           automator.click(collect.centerX(), collect.centerY())
           sleep(delay)
         }
-        return collect
+        return this.wrapImgPointWithBounds(collect)
       } else if (loop-- > 1) {
         sleep(500)
         logUtils.debugInfo(['未找到目标「{}」进行下一次查找，剩余尝试次数：{}', content, loop])
@@ -228,7 +228,7 @@ function BaseSignRunner () {
       let findText = localOcrUtil.recognizeWithBounds(screen, region, regex)
       if (findText && findText.length > 0) {
         let collect = findText[0].bounds
-        logUtils.debugInfo('OCR找到了目标：' + content)
+        logUtils.debugInfo(['OCR找到了目标 [{}]: {}', content, findText[0].label])
         FloatyInstance.setFloatyInfo({
           x: collect.centerX(),
           y: collect.centerY()
@@ -238,7 +238,7 @@ function BaseSignRunner () {
           automator.click(collect.centerX(), collect.centerY())
           sleep(delay)
         }
-        return collect
+        return this.wrapOcrPointWithBounds(collect)
       } else if (loop-- > 1) {
         sleep(500)
         logUtils.debugInfo(['未找到目标「{}」进行下一次查找，剩余尝试次数：{}', content, loop])
@@ -291,7 +291,7 @@ function BaseSignRunner () {
           y: collect.centerY()
         }, '找到了 ' + content)
         sleep(delay)
-        return collect
+        return this.wrapImgPointWithBounds(collect)
       }
     }
     FloatyInstance.setFloatyText('未找到 ' + content)
@@ -304,7 +304,7 @@ function BaseSignRunner () {
    * @param {object} imagePoint 
    */
   this.wrapImgPointWithBounds = function (imagePoint) {
-    if (imagePoint) {
+    if (imagePoint && !imagePoint.bounds) {
       imagePoint.bounds = () => {
         return imagePoint
       }
@@ -313,18 +313,21 @@ function BaseSignRunner () {
   }
 
   /**
-   * 给图片识别点增加bounds方法 主要用于获取centerX 和 centerY
+   * 给OCR识别点增加bounds方法 主要用于获取centerX 和 centerY
    * @param {Rect} ocrPoint 
    */
   this.wrapOcrPointWithBounds = function (ocrPoint) {
-    if (ocrPoint) {
+    if (!ocrPoint) {
+      return null
+    }
+    if (!ocrPoint.bounds) {
       return {
         bounds: function () {
           return ocrPoint
         }
       }
     }
-    return null
+    return ocrPoint
   }
 
   this.boundsToPosition = function (bounds) {
