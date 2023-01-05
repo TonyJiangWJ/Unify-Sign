@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-11-16 19:57:30
+ * @Last Modified time: 2023-01-05 17:28:38
  * @Description: 
  */
 let currentEngine = engines.myEngine().getSource() + ''
@@ -64,6 +64,7 @@ let default_config = {
   github_url: 'https://github.com/TonyJiangWJ/Unify-Sign',
   // github release url 用于检测更新状态
   github_latest_url: 'https://api.github.com/repos/TonyJiangWJ/Unify-Sign/releases/latest',
+  history_tag_url: 'https://api.github.com/repos/TonyJiangWJ/Unify-Sign/tags',
   killAppWithGesture: true,
   // 延迟启动时延 5秒 悬浮窗中进行的倒计时时间
   delayStartTime: 5,
@@ -156,6 +157,12 @@ let default_config = {
       name: '饿了么吃货豆',
       taskCode: 'Eleme',
       script: 'Eleme.js',
+      enabled: true
+    },
+    {
+      name: '什么值得买',
+      taskCode: 'Smzdm',
+      script: 'Smzdm.js',
       enabled: true
     }
   ].concat(custom_config.supported_signs || [])

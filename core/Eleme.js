@@ -35,22 +35,20 @@ function SignRunner () {
       let rewardButton = this.captureAndCheckByOcr('.*赚吃货豆.*', '赚吃货豆', null, null, true, 3)
       if (rewardButton) {
         sleep(1000)
-        let signBtn = widgetUtils.widgetGetOne('立即签到')
+        let signBtn = this.captureAndCheckByOcr('立即签到', '立即签到')//widgetUtils.widgetGetOne('立即签到')
         if(signBtn) {
+          signBtn = this.wrapOcrPointWithBounds(signBtn)
           boundsInfo = signBtn.bounds()
           FloatyInstance.setFloatyInfo({x: boundsInfo.centerX(), y: boundsInfo.centerY()}, '立即签到')
           sleep(500)
           automator.clickCenter(signBtn)
           sleep(1000)
-          let checkIn = widgetUtils.widgetGetOne('.*收下.*')
-          if (checkIn) {
-            automator.clickCenter(checkIn)
-          }
+          this.captureAndCheckByOcr('.*收下.*', '收下', null, null, true)
           this.doHangTasks()
           this.setExecuted()
         } else {
           FloatyInstance.setFloatyText('未找到立即签到按钮')
-          let signed = widgetUtils.widgetGetOne('今日已签到.*')
+          let signed = this.captureAndCheckByOcr('今日已签到.*', '今日已签到')
           if (signed) {
             FloatyInstance.setFloatyText('今日已签到')
             this.doHangTasks()
@@ -71,13 +69,18 @@ function SignRunner () {
    * 执行逛逛任务
    */
   this.doHangTasks = function () {
-    let checkBtn = selector().textMatches('.*去(浏览|逛逛|完成).*').depth(20).findOne(config.timeout_findOne)
+    let browseAndReward = this.captureAndCheckByOcr('浏览(赚|賺)豆', '浏览赚豆', null, null, true)
+    if (!browseAndReward) {
+      FloatyInstance.setFloatyText('未找到浏览赚豆')
+      return
+    }
+    let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
     // 增加限制 避免进入死循环 这里大概就11个
     let limit = 15
     while (checkBtn && limit-- > 0) {
       FloatyInstance.setFloatyText('找到了去(浏览|逛逛|完成)')
       sleep(500)
-      checkBtn.click()
+      automator.clickCenter(checkBtn)
       sleep(2000)
       let total = 20
       while (total-- > 0) {
@@ -89,12 +92,12 @@ function SignRunner () {
       automator.back()
       sleep(1000)
       let l = 3
-      while (!widgetUtils.widgetWaiting('逛逛任务') && l-- > 0) {
+      while (!this.captureAndCheckByOcr('浏览(赚|賺)豆', '浏览赚豆') && l-- > 0) {
         automator.back()
         sleep(1000)
       }
       sleep(2000)
-      checkBtn = selector().textMatches('.*去(浏览|逛逛|完成).*').depth(20).findOne(config.timeout_findOne)
+      checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
     }
     if (!checkBtn) {
       FloatyInstance.setFloatyText('未找到去(浏览|逛逛|完成)')
