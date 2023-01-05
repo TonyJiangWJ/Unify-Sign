@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2022-10-30 10:08:31
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-11-12 17:00:17
+ * @Last Modified time: 2023-01-04 14:06:02
  * @Description: github: https://github.com/TonyJiangWJ/AutoScriptBase
 -->
 <!DOCTYPE html>
@@ -14,6 +14,7 @@
   <link href="./css/materialdesignicons.min.css" rel="stylesheet">
   <link href="./css/vuetify.min.css" rel="stylesheet">
   <script src="./data.js"></script>
+  <script src="./img.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
   <style>
     .v-treeview-node__label {
@@ -101,13 +102,18 @@
           <v-row>
             <v-col>
               <p>运行<span class="code">独立工具/获取当前页面的布局信息.js</span>或通过<span class="code">独立工具/布局分析悬浮窗.js</span>触发</p>
-              <p>然后将<span class="code">logs/uiobjects.json</span>复制到电脑上，将内容粘贴在下面的文本框中开始执行分析。</p>
+              <p>然后将<span class="code">logs/uiobjects.json</span>复制到电脑上，将内容粘贴在下面的uiobjects.json文本框中开始执行分析。</p>
+              <p>如果选择了同时截图，则将图片base64文件<span class="code">logs/img.log</span>复制到电脑上，将内容粘贴在下面的图片base64文本框中开始执行分析。</p>
               <p>可以使用ADB复制 如<span class="code">adb pull sdcard/脚本/AutoScriptBase/logs/uiobjects.json
                   ./logs/</span>复制到电脑端的logs目录</p>
               <p>
                 推荐直接将<span class="code">logs/data.js</span>复制到电脑上，如<span class="code">adb pull
                   sdcard/脚本/AutoScriptBase/logs/data.js ./控件可视化/</span>
-                执行完刷新即可
+              </p>
+              <p>
+                对于图片base64数据，将<span class="code">logs/img.js</span>复制到电脑上，如<span class="code">adb pull
+                  sdcard/脚本/AutoScriptBase/logs/img.js ./控件可视化/</span>
+                执行完刷新浏览器即可
               </p>
               <p>历史获取的控件信息会保存在<span class="code">logs/hisUiObjects</span>下，根据实际情况使用。注意定时清理不需要的文件</p>
             </v-col>
@@ -115,6 +121,12 @@
           <v-row>
             <v-col>
               <v-textarea v-model="uiobjects" label="uiobjects.json内容" :rows="5" row-height="15">
+              </v-textarea>
+            </v-col>
+          </v-row>
+          <v-row>
+            <v-col>
+              <v-textarea v-model="imgBase64" label="图片base64" :rows="2" row-height="15">
               </v-textarea>
             </v-col>
           </v-row>
@@ -135,18 +147,20 @@
           <v-row>
             <v-col>
               <p>过滤函数是在树结构中筛选需要的节点，选择函数是自动选中并绘制筛选出来的节点，推荐写法为AutoJS UiSelector的形式。</p>
-              <p>例如填写<span class="code">boundsInside(100, 500, 700, 2000).className('android.widget.TextView').filter(v => v.boundsInfo.right - v.boundsInfo.left <= 200)</span>筛选区域内的宽度小于200的TextView节点</p>
+              <p>例如填写<span class="code">boundsInside(100, 500, 700, 2000).className('android.widget.TextView').filter(v
+                  => v.boundsInfo.right - v.boundsInfo.left <= 200)</span>筛选区域内的宽度小于200的TextView节点</p>
             </v-col>
           </v-row>
           <v-row>
             <v-col cols="6">
-              <v-textarea v-model="filterFuncStr" label="过滤函数" :rows="3" placeholder="如使用 UiSelector 写法为: boundsInside(500, 2000, 700, 2300)"
-                @blur="handleFuncStrChange"></v-textarea>
+              <v-textarea v-model="filterFuncStr" label="过滤函数" :rows="3"
+                placeholder="如使用 UiSelector 写法为: boundsInside(500, 2000, 700, 2300)" @blur="handleFuncStrChange">
+              </v-textarea>
             </v-col>
             <v-col cols="6">
               <v-textarea v-model="selectorFuncStr" label="选择函数" :rows="3"
-                placeholder="如使用匿名函数，写法为：node => /.*签到.*/.test(node.desc)"
-                @blur="handleSelectorFuncStrChange"></v-textarea>
+                placeholder="如使用匿名函数，写法为：node => /.*签到.*/.test(node.desc)" @blur="handleSelectorFuncStrChange">
+              </v-textarea>
             </v-col>
           </v-row>
           <v-row>
@@ -167,6 +181,7 @@
               </v-treeview>
             </v-col>
             <v-col class="right-canvas">
+              <v-checkbox v-model="drawImageCanvas" label="显示图片"></v-checkbox>
               <canvas id="myCanvas" width="400" height="889" style="border:1px solid #000000;">
                 您的浏览器不支持 HTML5 canvas 标签。
               </canvas>
@@ -183,26 +198,14 @@
             </div>
             <v-card-actions v-if="stackItems.length > 1">
               <v-spacer>总堆叠数：{{showDetailIdx+1}}/{{stackItems.length}}</v-spacer>
-              <v-btn
-                color="primary"
-                text
-                :disabled="showDetailIdx==0"
-                @click="showDetailIdx--"
-              >
+              <v-btn color="primary" text :disabled="showDetailIdx==0" @click="showDetailIdx--">
                 上一个
               </v-btn>
-              <v-btn
-                color="primary"
-                text
-                @click="showDetailIdx++"
-                :disabled="showDetailIdx >= stackItems.length - 1"
-              >
+              <v-btn color="primary" text @click="showDetailIdx++" :disabled="showDetailIdx >= stackItems.length - 1">
                 下一个
               </v-btn>
             </v-card-actions>
           </v-card>
-          
-        </v-card>
         </v-dialog>
     </v-app>
   </div>
@@ -216,8 +219,56 @@
     let deviceWidth = 1080
     let deviceHeight = 2340
     let idChecker = new Set()
+    let packageName = null
+    let columns = [
+      {
+        key: 'boundsInfo',
+        convert: item => {
+          let { left, right, top, bottom } = item.boundsInfo
+          return `rect:[${left},${top},${right},${bottom}] region:[${left},${top},${right - left},${bottom - top}]`
+        }
+      },
+      { key: 'desc' },
+      { key: 'text' },
+      { key: 'id' },
+      { key: 'depth' },
+      { key: 'indexInParent' },
+      { key: 'drawingOrder' },
+      { key: 'visibleToUser', isBoolean: true },
+      { key: 'clickable', isBoolean: true },
+      { key: 'longClickable', isBoolean: true },
+      { key: 'className' },
+      { key: 'packageName' },
+      { key: 'checkable', isBoolean: true },
+      { key: 'checked', isBoolean: true },
+      { key: 'focusable', isBoolean: true },
+      { key: 'focused', isBoolean: true },
+      { key: 'accessibilityFocused', isBoolean: true },
+      { key: 'selected', isBoolean: true },
+      { key: 'enabled', isBoolean: true },
+      { key: 'password', isBoolean: true },
+      { key: 'scrollable', isBoolean: true },
+      { key: 'row' },
+      { key: 'rowCount' },
+      { key: 'rowSpan' },
+      { key: 'column' },
+      { key: 'columnCount' },
+      { key: 'columnSpan' },
+    ]
     function buildWithChild (childArray, filter) {
       let rootNode = childArray[0]
+      columns.forEach(item => {
+        if (item.isBoolean) {
+          rootNode[item.key] = falseIfUndefined(item, rootNode[item.key])
+        }
+        if (item.key == 'packageName') {
+          if (typeof rootNode.packageName == "undefined") {
+            rootNode.packageName = packageName
+          } else {
+            packageName = rootNode.packageName
+          }
+        }
+      })
       if (typeof filter != "undefined" && !filter(rootNode, childArray)) {
         console.log('过滤无效节点')
         return null
@@ -244,7 +295,7 @@
         children: []
       }
       while (idChecker.has(root.id)) {
-        // console.error('id 重复 ', root.id)
+        console.error('id 重复 ', root.id)
         root.id += 'x'
       }
       idChecker.add(root.id)
@@ -296,41 +347,15 @@
       }
       return hasChild
     }
-    let columns = [
-      {
-        key: 'boundsInfo',
-        convert: item => {
-          let { left, right, top, bottom } = item.boundsInfo
-          return `rect:[${left},${top},${right},${bottom}] region:[${left},${top},${right - left},${bottom - top}]`
-        }
-      },
-      { key: 'desc' },
-      { key: 'text' },
-      { key: 'id' },
-      { key: 'depth' },
-      { key: 'indexInParent' },
-      { key: 'drawingOrder' },
-      { key: 'visibleToUser' },
-      { key: 'clickable' },
-      { key: 'longClickable' },
-      { key: 'className' },
-      { key: 'packageName' },
-      { key: 'checkable' },
-      { key: 'checked' },
-      { key: 'focusable' },
-      { key: 'focused' },
-      { key: 'accessibilityFocused' },
-      { key: 'selected' },
-      { key: 'enabled' },
-      { key: 'password' },
-      { key: 'scrollable' },
-      { key: 'row' },
-      { key: 'rowCount' },
-      { key: 'rowSpan' },
-      { key: 'column' },
-      { key: 'columnCount' },
-      { key: 'columnSpan' },
-    ]
+    function falseIfUndefined(item, value) {
+      if (typeof value !== "undefined") {
+        return value
+      }
+      if (item.isBoolean) {
+        return false
+      }
+      return undefined
+    }
   </script>
 
   <script>
@@ -342,7 +367,7 @@
           uiobjects: typeof objects != 'undefined' && !!objects ? JSON.stringify(objects) : '',
           // uiobjects: '',
           opened: [],
-          visibleOnly: false,
+          visibleOnly: true,
           hasContent: false,
           inScreen: false,
           dialog: false,
@@ -367,6 +392,8 @@
           items: [],
           buildingTimeoutId: null,
           totalWidgets: 0,
+          imgBase64: typeof imageBase64 != 'undefined' ? imageBase64 || '' : '',
+          drawImageCanvas: false,
         }
       },
       computed: {
@@ -374,7 +401,7 @@
           console.log('filter changed')
           return (rootNode, childArray) => {
             if (this.visibleOnly) {
-              if (!rootNode.visible) {
+              if (!rootNode.visible && !hasVisiableChild(childArray)) {
                 return false
               }
             }
@@ -450,6 +477,9 @@
         inScreen: function () {
           this.buildItems()
         },
+        imgBase64: function () {
+          this.$el.drawImg.src = this.imgBase64
+        }
       },
       methods: {
         buildItems: function (callback) {
@@ -469,6 +499,7 @@
                 _this.deviceWidth = data[0].boundsInfo.right
                 deviceHeight = _this.deviceHeight
                 deviceWidth = _this.deviceWidth
+                packageName = data[0].packageName
                 // console.log(data)
                 // setTimeout(() => {
                 idChecker = new Set()
@@ -582,11 +613,16 @@
             key: 'active'
           }, items)
         },
-        clearCanvas: function () {
+        clearCanvas: async function () {
           if (this.$el && this.$el.canvas) {
             this.$el.canvas.width = this.$el.canvas.width
             this.$el.canvas.height = canvasWidth / deviceWidth * deviceHeight
-            this.$el.ctx.scale(canvasWidth / deviceWidth, canvasWidth / deviceWidth)
+            let scale = canvasWidth / deviceWidth
+            let _this = this
+            if (_this.$el.drawImg && _this.$el.drawImg.src && _this.drawImageCanvas) {
+              _this.$el.ctx.drawImage(_this.$el.drawImg, 0, 0, _this.$el.canvas.width, _this.$el.canvas.height)
+            }
+            this.$el.ctx.scale(scale, scale)
           }
         },
         drawCanvas: async function (uiObjects, selectedItems) {
@@ -599,10 +635,12 @@
           selectedItems.forEach(key => tmpSelectCache.add(key))
           let drawed = new Set()
           console.log('清空canvas')
-          this.clearCanvas()
+          await this.clearCanvas()
           this.$el.ctx.strokeStyle = "#23ff00";
           console.log('绘制')
+          let start = new Date().getTime()
           await uiObjects.forEach(object => this.drawChild(object, tmpSelectCache, this.$el.ctx, drawed))
+          console.log('绘制完毕，cost', new Date().getTime() - start, 'ms')
         },
         drawChild: function (object, selectedCache, ctx, drawed) {
           let { left, top, right, bottom } = object.root.boundsInfo
@@ -721,6 +759,9 @@
           console.log('计算canvas width:', canvasWidth)
           _this.$el.canvas.width = canvasWidth
           _this.$el.canvas.height = canvasWidth / deviceWidth * deviceHeight
+          if (_this.$el.drawImg && _this.$el.drawImg.src && _this.drawImageCanvas) {
+            _this.$el.ctx.drawImage(_this.$el.drawImg, 0, 0, _this.$el.canvas.width, _this.$el.canvas.height)
+          }
         }
         recalculate()
         let calculating = null
@@ -729,6 +770,20 @@
             clearTimeout(calculating)
           }
           calculating = setTimeout(() => recalculate(), 50)
+        }
+        this.$el.drawImg = new Image()
+        window.onload = function () {
+          console.log('绑定img load')
+          _this.$el.drawImg.onload = function () {
+            console.log('image load:', _this.$el.drawImg.width, ',', _this.$el.drawImg.height)
+            if (_this.drawImageCanvas) {
+              _this.$el.ctx.drawImage(_this.$el.drawImg, 0, 0, _this.$el.canvas.width, _this.$el.canvas.height)
+            }
+          }
+          setTimeout(() => {
+            console.log('对img赋值', _this.imgBase64)
+            _this.$el.drawImg.src = _this.imgBase64
+          }, 100)
         }
       }
     })
@@ -744,6 +799,21 @@
       }
       for (let i = 1; i < childArray.length; i++) {
         if (hasValidChild(childArray[i], func)) {
+          return true
+        }
+      }
+      return false
+    }
+
+    function hasVisiableChild(childArray) {
+      if (!childArray || childArray.length < 1) {
+        return false
+      }
+      if (childArray[0].visible) {
+        return true
+      }
+      for (let i = 1; i < childArray.length; i++) {
+        if (hasVisiableChild(childArray[i])) {
           return true
         }
       }
