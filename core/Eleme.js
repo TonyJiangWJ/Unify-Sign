@@ -72,12 +72,27 @@ function SignRunner () {
     let browseAndReward = this.captureAndCheckByOcr('浏览(赚|賺)豆', '浏览赚豆', null, null, true)
     if (!browseAndReward) {
       FloatyInstance.setFloatyText('未找到浏览赚豆')
+      // 自动设置五分钟后继续
+      this.createNextSchedule(this.taskCode)
       return
     }
     let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
     // 增加限制 避免进入死循环 这里大概就11个
-    let limit = 15
+    let limit = 15, lastTask = null, region = null
     while (checkBtn && limit-- > 0) {
+      let bds = checkBtn.bounds()
+      let checkTaskInfo = this.captureAndGetOcrText('任务信息', [0, bds.top - bds.height(), bds.left, bds.height() * 2.5])
+      debugInfo(['任务信息：{}', checkTaskInfo])
+      if (checkTaskInfo == lastTask) {
+        warnInfo(['当前任务和上一个任务相同，可能又是饿了么搞幺蛾子：{}', checkTaskInfo])
+        region = [0, bds.bottom, config.device_width, config.device_height - bds.bottom]
+        checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', region)
+        if (!checkBtn) {
+          debugInfo(['排除重复任务后，无更多任务'])
+          break
+        }
+      }
+      lastTask = checkTaskInfo
       FloatyInstance.setFloatyText('找到了去(浏览|逛逛|完成)')
       sleep(500)
       automator.clickCenter(checkBtn)
@@ -97,7 +112,7 @@ function SignRunner () {
         sleep(1000)
       }
       sleep(2000)
-      checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
+      checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', region)
     }
     if (!checkBtn) {
       FloatyInstance.setFloatyText('未找到去(浏览|逛逛|完成)')
