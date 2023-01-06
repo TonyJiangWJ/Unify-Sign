@@ -253,6 +253,27 @@ function BaseSignRunner () {
     return null
   }
 
+
+  this.captureAndGetOcrText = function (desc, region) {
+    if (!localOcrUtil.enabled) {
+      logUtils.warnInfo('当前AutoJS不支持OCR')
+      return null
+    }
+    let screen = commonFunctions.captureScreen()
+    logUtils.debugInfo('准备OCR获取文本：' + desc)
+    if (screen) {
+      let findText = localOcrUtil.recognizeWithBounds(screen, region)
+      if (findText && findText.length > 0) {
+        return findText.map(v => v.label).join('')
+      }
+    } else {
+      logUtils.errorInfo('截图失败')
+    }
+    FloatyInstance.setFloatyText('未找到文本内容')
+    sleep(delay)
+    return null
+  }
+
   /**
    * 循环截图等待目标图片出现
    * 
@@ -321,11 +342,9 @@ function BaseSignRunner () {
       return null
     }
     if (!ocrPoint.bounds) {
-      return {
-        bounds: function () {
-          return ocrPoint
-        }
-      }
+      let newPoint = Object.create(ocrPoint)
+      newPoint.bounds = () => ocrPoint
+      return newPoint
     }
     return ocrPoint
   }

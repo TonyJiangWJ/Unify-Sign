@@ -41,7 +41,7 @@ function BeanCollector () {
       entered = true
     }
     if (entered) {
-      let doSignBtn = WidgetUtils.widgetGetOne('去签到领京豆|(已签到|已连签.*|明天签到.*)')
+      let doSignBtn = WidgetUtils.widgetGetOne('.*签到领京豆|(已签到|已连签|明天签到).*')
       if (doSignBtn) {
         let content = doSignBtn.desc() || doSignBtn.text()
         if (/已连签.*|明天签到.*/.test(content)) {
