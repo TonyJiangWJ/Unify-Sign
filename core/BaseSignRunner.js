@@ -270,7 +270,7 @@ function BaseSignRunner () {
       logUtils.errorInfo('截图失败')
     }
     FloatyInstance.setFloatyText('未找到文本内容')
-    sleep(delay)
+    sleep(1000)
     return null
   }
 

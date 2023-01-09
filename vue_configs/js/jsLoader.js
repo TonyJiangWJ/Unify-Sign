@@ -9,6 +9,7 @@ const loadJsList = [
   './js/components/configuration/WeiboConfig.js',
   './js/components/configuration/BBFarmConfig.js',
   './js/components/configuration/MiHoYoConfig.js',
+  './js/components/configuration/JingDongConfig.js',
   './js/components/configuration/SignTaskScheduleConfig.js',
   './js/components/configuration/TaskScheduleList.js',
   './js/components/configuration/SignConfig.js',

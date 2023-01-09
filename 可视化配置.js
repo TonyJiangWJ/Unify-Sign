@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-11-29 11:28:15
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2020-12-30 20:00:45
+ * @Last Modified time: 2023-01-09 15:11:06
  * @Description: 
  */
 "ui";
@@ -45,6 +45,7 @@ let postMessageToWebView = () => { console.error('function not ready') }
 ui.webview.setVisibility(View.GONE)
 if (config.clear_webview_cache) {
   ui.webview.clearCache(true)
+  ui.webview.loadUrl('javascript:localStorage.clear()')
   config.overwrite('clear_webview_cache', false)
 }
 prepareWebView(ui.loadingWebview, {

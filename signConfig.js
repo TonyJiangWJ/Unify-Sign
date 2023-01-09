@@ -27,6 +27,15 @@ module.exports = function (default_config, config, CONFIG_STORAGE_NAME) {
   // 米哈游签到
   binder.bindCustomSignConfig('mihoyo', {}, ['reward_icon'])
 
+  // 京东签到
+  binder.bindCustomSignConfig('jingdong', {
+    home_entry: '领京豆',
+    mine: '我的',
+    mine_entry: '京豆',
+    sign_button: '.*(签到领|已签到|已连签|明天签到).*',
+    already_signed: '(已签到|已连签|明天签到).*',
+  }, [])
+
   // 执行扩展配置
   extendCustomSignConfig && extendCustomSignConfig(binder)
 

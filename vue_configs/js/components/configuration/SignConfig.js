@@ -25,7 +25,14 @@ const SignConfig = {
             name: '京东签到',
             taskCode: 'JingDong',
             script: 'JingDongBeans.js',
-            enabled: true
+            enabled: true,
+            subTasks: [
+              {
+                taskCode: 'plantBean',
+                taskName: '种豆得豆',
+                enabled: true,
+              }
+            ]
           },
           {
             name: '米游社-原神签到',
@@ -74,7 +81,8 @@ const SignConfig = {
         'DingDong': '/basic/sign/dingdong',
         'Weibo': '/basic/sign/weibo',
         'BBFarm': '/basic/sign/bbFarm',
-        'MiHoYo': '/basic/sign/mihoyo'
+        'MiHoYo': '/basic/sign/mihoyo',
+        'JingDong': '/basic/sign/jingdong',
       }
     }
   },
