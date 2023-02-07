@@ -1,11 +1,11 @@
 
 const router = new VueRouter({
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior (to, from, savedPosition) {
     console.log('savedPosition', savedPosition)
     if (savedPosition) {
-        return savedPosition
+      return savedPosition
     }
-    return {x: 0, y: 0}
+    return { x: 0, y: 0 }
   },
   routes: [
     { path: '/', component: Index, meta: { index: 0 } },
@@ -25,7 +25,8 @@ const router = new VueRouter({
     { path: '/advance/common', component: AdvanceCommonConfig, meta: { index: 1 } },
     { path: '/advance/ocr', component: OCRConfig, meta: { index: 1 } },
     { path: '/about', component: About, meta: { index: 1 } },
-    { path: '/about/develop', component: DevelopConfig, meta: { index:2, title: '开发模式' } },
+    { path: '/about/develop', component: DevelopConfig, meta: { index: 2, title: '开发模式' } },
+    { path: '/about/releases', component: HistoryRelease, meta: { index: 3, title: '更新历史' } },
   ]
 })
 

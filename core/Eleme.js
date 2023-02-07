@@ -32,7 +32,7 @@ function SignRunner () {
       automator.clickCenter(mine)
       sleep(1000)
       FloatyInstance.setFloatyText('通过OCR查找赚吃货豆')
-      let rewardButton = this.captureAndCheckByOcr('.*赚吃货豆.*', '赚吃货豆', null, null, true, 3)
+      let rewardButton = this.captureAndCheckByOcr('.*(赚|賺)吃货豆.*', '赚吃货豆', null, null, true, 3)
       if (rewardButton) {
         sleep(1000)
         let signBtn = this.captureAndCheckByOcr('立即签到', '立即签到')//widgetUtils.widgetGetOne('立即签到')
