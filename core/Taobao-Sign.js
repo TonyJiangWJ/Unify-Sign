@@ -10,6 +10,7 @@ let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
   BaseSignRunner.call(this)
   const _package_name = 'com.taobao.taobao'
+  const storageHelper = new SignStorageHelper(this)
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -33,6 +34,12 @@ function SignRunner () {
       if (this.signed) {
         this.setExecuted()
       }
+      // 签到是成功了，但是未主动设置定时任务，估计有问题
+      if (!storageHelper.checkIsCountdownExecuted()) {
+        warnInfo(['今日未创建过定时任务，直接设置五分钟后的执行计划'])
+        this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
+        storageHelper.incrCountdown()
+      }
     } else {
       logUtils.warnInfo(['未找到签到按钮'])
     }
@@ -54,29 +61,29 @@ function SignRunner () {
         sleep(1000)
         automator.click(bounds.centerX(), bounds.centerY())
         sleep(1000)
-        find = localOcrUtil.recognizeWithBounds(screen, null, '.*提醒我.*')
-        if (find && find.length > 0) {
-          FloatyInstance.setFloatyInfo(this.boundsToPosition(find[0].bounds), '提醒我')
+        find = widgetUtils.widgetGetOne('.*继续领现金.*')
+        if (find) {
+          FloatyInstance.setFloatyInfo(this.boundsToPosition(find.bounds()), '继续领现金')
           this.signed = true
-          // 找到了提醒我才能确保确实已签到
+          // 找到了继续领现金才能确保确实已签到
           commonFunctions.setTaobaoSigned()
         }
       } else {
-        FloatyInstance.setFloatyText('未找到立即签到，查找提醒我')
+        FloatyInstance.setFloatyText('未找到立即签到，查找继续领现金')
         sleep(1000)
-        find = localOcrUtil.recognizeWithBounds(screen, null, '.*提醒我.*')
-        if (find && find.length > 0) {
-          FloatyInstance.setFloatyInfo(this.boundsToPosition(find[0].bounds), '提醒我')
+        find = widgetUtils.widgetGetOne('.*继续领现金.*')
+        if (find) {
+          FloatyInstance.setFloatyInfo(this.boundsToPosition(find.bounds()), '继续领现金')
           this.signed = true
-          // 找到了提醒我才能确保确实已签到
+          // 找到了继续领现金才能确保确实已签到
           commonFunctions.setTaobaoSigned()
         } else {
           if (commonFunctions.checkTaobaoFailedCount() > 3) {
-            FloatyInstance.setFloatyText('查找提醒我失败多次，标记为签到成功')
-            logUtils.warnInfo(['寻找 提醒我 失败多次，直接标记为成功，请确认是否已经正常签到'], true)
+            FloatyInstance.setFloatyText('查找继续领现金失败多次，标记为签到成功')
+            logUtils.warnInfo(['寻找 继续领现金 失败多次，直接标记为成功，请确认是否已经正常签到'], true)
             this.signed = true
           } else {
-            FloatyInstance.setFloatyText('未找到提醒我，签到失败')
+            FloatyInstance.setFloatyText('未找到继续领现金，签到失败')
             commonFunctions.increaseTbFailedCount()
           }
           sleep(1000)
@@ -88,99 +95,117 @@ function SignRunner () {
   }
 
   this.checkCountdownBtn = function (waitForNext) {
-    sleep(1000)
-    // 艹 奖励降低到了80
-    let plusOneHundred = widgetUtils.widgetGetOne('\\+\\d{2,3}', null, null, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
-    if (plusOneHundred) {
-      let screen = commonFunctions.captureScreen()
-      if (screen && localOcrUtil.enabled) {
-        let bounds = plusOneHundred.bounds()
-        let find = localOcrUtil.recognizeWithBounds(screen, [bounds.left - bounds.width() / 2, bounds.top, bounds.width() * 2, bounds.width() * 2], /\d+后可领/)
-        if (find && find.length > 0) {
-          let text = find[0].label
-          bounds = find[0].bounds
-          FloatyInstance.setFloatyInfo({ x: bounds.centerX(), y: bounds.centerY() }, '剩余时间：' + text)
-          sleep(1000)
-          let regex = /((\d+(:?)){1,3})后可领/
-          if (regex.test(text)) {
-            text = regex.exec(text)[1]
-            regex = /(\d+(:?))/g
-            let totalNums = []
-            let find = null
-            while ((find = regex.exec(text)) != null) {
-              totalNums.push(parseInt(find[1]))
-            }
-            let i = 0
-            let totalSeconds = totalNums.reverse().reduce((a, b) => { a += b * Math.pow(60, i++); return a }, 0)
-            FloatyInstance.setFloatyInfo({ x: bounds.centerX(), y: bounds.centerY() }, '计算倒计时' + totalSeconds + '秒')
-            if (waitForNext) {
-              if (totalSeconds < 60) {
-                commonFunctions.commonDelay(totalSeconds / 60, '等待元宝')
-                this.checkCountdownBtn(true)
-              } else {
-                this.createNextSchedule(this.taskCode, new Date().getTime() + totalSeconds * 1000)
-              }
-            }
-            sleep(1000)
+    let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
+    if (awardCountdown) {
+      this.displayButton(awardCountdown, '可以领')
+      automator.clickCenter(awardCountdown)
+      sleep(1000)
+      if (this.closeDialogIfPossible()) {
+        logUtils.debugInfo(['通过弹窗浏览广告'])
+      }
+      this.checkCountdownBtn(waitForNext)
+    } else {
+      let countdown = widgetUtils.widgetGetOne(/((\d+:){2}\d+$)/, null, true, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
+      if (countdown) {
+        FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '剩余时间：' + countdown.content)
+        sleep(1000)
+        let regex = /((\d+(:?)){1,3})/
+        let text = countdown.content
+        if (regex.test(text)) {
+          text = regex.exec(text)[1]
+          regex = /(\d+(:?))/g
+          let totalNums = []
+          let find = null
+          while ((find = regex.exec(text)) != null) {
+            totalNums.push(parseInt(find[1]))
           }
-        } else {
-          this.displayButton(plusOneHundred, '可以领' + (plusOneHundred.desc() || plusOneHundred.text()))
-          automator.clickCenter(plusOneHundred)
-          sleep(1000)
-          if (this.closeDialogIfPossible()) {
-            logUtils.debugInfo(['+100已经通过弹窗浏览广告'])
+          let i = 0
+          let totalSeconds = totalNums.reverse().reduce((a, b) => { a += b * Math.pow(60, i++); return a }, 0)
+          FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '计算倒计时' + totalSeconds + '秒')
+          if (waitForNext) {
+            if (totalSeconds < 60) {
+              commonFunctions.commonDelay(totalSeconds / 60, '等待元宝')
+              this.checkCountdownBtn(true)
+            } else {
+              this.createNextSchedule(this.taskCode, new Date().getTime() + totalSeconds * 1000)
+              storageHelper.incrCountdown(true)
+            }
           }
-          this.checkCountdownBtn(waitForNext)
+          sleep(1000)
         }
       }
     }
+
   }
 
   this.browseAds = function () {
     sleep(1000)
-    let moreCoins = widgetUtils.widgetGetOne('\\+[6789]\\d{3}', null, true, null, matcher => matcher.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.2))
-    if (moreCoins && moreCoins.content) {
-      this.checkCountdownBtn()
-      this.displayButtonAndClick(moreCoins.target, moreCoins.content)
-      sleep(1000)
-      let hangout = widgetUtils.widgetGetOne('去逛逛')
-      let noMore = false
-      if (this.displayButtonAndClick(hangout, '去逛逛')) {
+    if (storageHelper.isHangTaskDone()) {
+      this.checkCountdownBtn(true)
+    } else {
+      let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
+      if (moreCoins) {
+        this.checkCountdownBtn()
+        this.displayButtonAndClick(moreCoins.target, moreCoins.content)
         sleep(1000)
-        this.doBrowsing()
         sleep(1000)
-        automator.back()
-      } else {
-        logUtils.warnInfo(['未找到去逛逛 可能已经完成了'])
-        let finished = widgetUtils.widgetGetOne('已完成')
-        // 点进去 然后返回
-        if (this.displayButtonAndClick(finished, '已完成')) {
-          noMore = true
+        let hangout = widgetUtils.widgetGetOne('去逛逛')
+        let noMore = false
+        if (this.displayButtonAndClick(hangout, '去逛逛')) {
+          sleep(1000)
+          this.doBrowsing()
           sleep(1000)
           automator.back()
+        } else {
+          logUtils.warnInfo(['未找到去逛逛 可能已经完成了'])
+          let searchBtn = widgetUtils.widgetGetOne('去搜索')
+          if (this.displayButtonAndClick(searchBtn, '去搜索')) {
+            this.doSearching()
+          } else {
+            let finished = widgetUtils.widgetGetOne('已完成')
+            // 点进去 然后返回
+            if (this.displayButtonAndClick(finished, '已完成')) {
+              noMore = true
+              sleep(1000)
+              automator.back()
+              storageHelper.setHangTaskDone()
+            }
+          }
+        }
+        sleep(1000)
+        if (this.closeDialogIfPossible()) {
+          logUtils.debugInfo(['已经通过弹窗浏览广告'])
+        }
+        this.checkCountdownBtn(true)
+        sleep(1000)
+        if (!noMore) {
+          this.browseAds()
         }
       }
-      sleep(1000)
-      if (this.closeDialogIfPossible()) {
-        logUtils.debugInfo(['已经通过弹窗浏览广告'])
-      }
-      this.checkCountdownBtn()
-      sleep(1000)
-      if (!noMore) {
-        this.browseAds()
-      }
-    } else {
-      logUtils.debugInfo(['逛一逛任务已完成，查找+100并设置定时任务'])
-      this.checkCountdownBtn(true)
     }
   }
 
-  this.doBrowsing = function () {
+  this.doSearching = function () {
+    if (widgetUtils.idWaiting('com.taobao.taobao:id/dynamic_container')) {
+      let searchIcon = selector().clickable().depth(11).boundsInside(0, 0, 0.5 * config.device_width, 0.6 * config.device_height).findOne(config.timeout_existing || 8000)
+      if (searchIcon) {
+        this.displayButtonAndClick(searchIcon, '推荐商品')
+        sleep(1000)
+        this.doBrowsing('浏览本页面.*')
+        sleep(1000)
+        automator.back()
+      }
+    }
+    sleep(1000)
+    automator.back()
+  }
+
+  this.doBrowsing = function (content) {
     let startY = config.device_height - config.device_height * 0.15
     let endY = startY - config.device_height * 0.3
     automator.gestureDown(startY, endY)
     let start = new Date().getTime()
-    while (widgetUtils.widgetWaiting('滑动浏览', null, 5000) && new Date().getTime() - start < 40000) {
+    while (widgetUtils.widgetWaiting(content || '滑动浏览', null, 5000) && new Date().getTime() - start < 40000) {
       sleep(4000)
       automator.gestureDown(startY, endY)
     }
@@ -206,6 +231,9 @@ function SignRunner () {
     return false
   }
 
+  this.initStorages = function () {
+    storageHelper.initStorages()
+  }
 
   this.exec = function () {
     this.launchTaobao(_package_name)
@@ -220,3 +248,55 @@ SignRunner.prototype = Object.create(BaseSignRunner.prototype)
 SignRunner.prototype.constructor = SignRunner
 
 module.exports = new SignRunner()
+
+
+// ---
+function SignStorageHelper (runner) {
+  const HANG_WORK_DONE = "TB_HANG_WORK_DONE"
+  const COUNTDOWN_CHECKING = "TB_COUNTDOWN_CHECKING"
+  this.initStorages = function () {
+    // 逛一逛任务是否完成
+    runner.initDailyStorage(HANG_WORK_DONE, { executed: false, count: 0 })
+    // 是否执行过倒计时
+    runner.initDailyStorage(COUNTDOWN_CHECKING, { executed: false, count: 0 })
+  }
+
+  this.isHangTaskDone = function () {
+    let value = runner.getDailyStorage(HANG_WORK_DONE)
+    return value.executed
+  }
+
+  this.incrHangTask = function () {
+    let value = runner.getDailyStorage(HANG_WORK_DONE)
+    value.count += 1
+    runner.setDailyStorage(HANG_WORK_DONE, value)
+  }
+
+  this.setHangTaskDone = function () {
+    let value = runner.getDailyStorage(HANG_WORK_DONE)
+    value.executed = true
+    runner.setDailyStorage(HANG_WORK_DONE, value)
+  }
+
+  /**
+   * 增加倒计时的执行次数
+   * @param {boolean} realExecuted 是否真实的运行过
+   */
+  this.incrCountdown = function (realExecuted) {
+    let value = runner.getDailyStorage(COUNTDOWN_CHECKING)
+    value.count += 1
+    if (realExecuted) {
+      value.executed = true
+    }
+    runner.setDailyStorage(COUNTDOWN_CHECKING, value)
+  }
+
+  this.checkIsCountdownExecuted = function () {
+    let executeInfo = runner.getDailyStorage(COUNTDOWN_CHECKING)
+    if (executeInfo.executed || executeInfo.count >= 3) {
+      return true
+    }
+    return false
+  }
+
+}

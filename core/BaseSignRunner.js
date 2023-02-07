@@ -9,12 +9,14 @@ let signTaskService = singletonRequire('SignTaskService')
 let OpenCvUtil = require('../lib/OpenCvUtil.js')
 let formatDate = require('../lib/DateUtil.js')
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
+let storageFactory = singletonRequire('StorageFactory')
 
 function BaseSignRunner () {
   this.name = ''
   this.taskCode = ''
   this.subTasks = []
   this.executedSuccess = false
+  this.initStorages()
   this.setName = function (name) {
     this.name = name
     return this
@@ -28,6 +30,18 @@ function BaseSignRunner () {
   this.setSubTasks = function (subTasks) {
     this.subTasks = subTasks
     return this
+  }
+
+  this.initDailyStorage = function (key, defaultValue) {
+    storageFactory.initFactoryByKey(key, defaultValue)
+  }
+
+  this.getDailyStorage = function (key) {
+    return storageFactory.getValueByKey(key)
+  }
+
+  this.setDailyStorage = function (key, value) {
+    return storageFactory.updateValueByKey(key, value)
   }
 
   /**
@@ -79,7 +93,7 @@ function BaseSignRunner () {
     }
     let scheduleList = signTaskService.listTaskScheduleByDate(date, taskCode)
     let exists = scheduleList.filter(schedule => schedule.executeStatus === 'A' && Math.abs(schedule.executeTime - targetTime) < 5 * 60000)
-    if (exists && exists.length > 1) {
+    if (exists && exists.length >= 1) {
       logUtils.warnInfo(['任务[{}]已存在五分钟内的执行计划{}个 跳过创建', taskCode, exists.length])
       return
     }
@@ -240,7 +254,7 @@ function BaseSignRunner () {
         }
         return this.wrapOcrPointWithBounds(collect)
       } else if (loop-- > 1) {
-        sleep(500)
+        sleep(delay)
         logUtils.debugInfo(['未找到目标「{}」进行下一次查找，剩余尝试次数：{}', content, loop])
         logUtils.debugForDev(['图片数据：[data:image/png;base64,{}]', images.toBase64(images.clip(screen, config.device_width / 2, config.device_height * 0.7, config.device_width - config.device_width / 2, config.device_height - config.device_height * 0.7))])
         return this.captureAndCheckByOcr(regex, content, region, delay, clickIt, loop)
@@ -418,5 +432,9 @@ function BaseSignRunner () {
 
   }
 }
+/**
+ * 初始化自定义存储，用于每日数据缓存
+ */
+BaseSignRunner.prototype.initStorages = () => {}
 
 module.exports = BaseSignRunner

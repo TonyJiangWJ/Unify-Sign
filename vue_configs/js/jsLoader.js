@@ -2,7 +2,11 @@
  * 配置需要异步加载的文件
  */
 const loadJsList = [
+  'https://fastly.jsdelivr.net/npm/axios@0.25.0/dist/axios.min.js',
+  'https://fastly.jsdelivr.net/npm/js-base64@3.7.2/base64.min.js',
+  './js/mdjs.min.js',
   './js/components/configuration/About.js',
+  './js/components/configuration/QuestionAnswer.js',
   './js/components/configuration/DevelopConfig.js',
   './js/components/configuration/CommonConfigs.js',
   './js/components/configuration/DingDongConfig.js',
@@ -41,9 +45,9 @@ appendJs('./js/components/common.js')
 
 // 加载CSS
 const cssList = [
-  // 'https://fastly.jddelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css',
+  'https://fastly.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css',
 ]
-cssList.forEach((css) => appendCss(css))
+cssList.forEach(css => appendCss(css))
 
 //===============
 

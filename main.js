@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-07-14 09:14:41
+ * @Last Modified time: 2023-02-01 10:08:55
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -12,13 +12,8 @@ let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
 let { logInfo, errorInfo, warnInfo, debugInfo, infoLog, debugForDev, flushAllLogs } = singletonRequire('LogUtils')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let commonFunctions = singletonRequire('CommonFunction')
-let signTaskManager = singletonRequire('SignTaskManager')
 let automator = singletonRequire('Automator')
 config.not_lingering_float_window = true
-signTaskManager.init()
-  .generateDefaultScheduleConfig()
-  .generateTaskSchedules()
-  .exitIfNoTaskToExecute()
 commonFunctions.delayIfBatteryLow()
 let callStateListener = !config.is_pro && config.enable_call_state_control ? singletonRequire('CallStateListener') : { exitIfNotIdle: () => { } }
 // 用于代理图片资源，请勿移除 否则需要手动添加recycle代码
@@ -34,6 +29,20 @@ if (config.single_script) {
 logInfo('======加入任务队列，并关闭重复运行的脚本=======')
 runningQueueDispatcher.addRunningTask()
 commonFunctions.killDuplicateScript()
+logInfo('======初始化SQLite=======')
+let signTaskService = singletonRequire('SignTaskService')
+let signTaskManager = singletonRequire('SignTaskManager')
+// 初始化数据库连接
+signTaskService.init()
+// debugInfo(['任务分组数据：{}', JSON.stringify(signTaskService.listGroupScheduleConfig())])
+logInfo('======初始化SQLite成功=======')
+
+logInfo('======初始化任务数据=======')
+signTaskManager.init()
+  .generateDefaultScheduleConfig()
+  .generateTaskSchedules()
+  .exitIfNoTaskToExecute()
+logInfo('======初始化任务数据成功=======')
 // 注册自动移除运行中任务
 commonFunctions.registerOnEngineRemoved(function () {
   config.resetBrightness && config.resetBrightness()
