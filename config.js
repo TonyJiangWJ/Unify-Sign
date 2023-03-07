@@ -2,9 +2,10 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-01-05 17:28:38
+ * @Last Modified time: 2023-03-03 10:21:52
  * @Description: 
  */
+require('./lib/Runtimes.js')(global)
 let currentEngine = engines.myEngine().getSource() + ''
 let isRunningMode = currentEngine.endsWith('/config.js') && typeof module === 'undefined'
 let is_pro = !!Object.prototype.toString.call(com.stardust.autojs.core.timing.TimedTask.Companion).match(/Java(Class|Object)/)
@@ -98,7 +99,19 @@ let default_config = {
       name: '京东签到',
       taskCode: 'JingDong',
       script: 'JingDongBeans.js',
-      enabled: true
+      enabled: true,
+      subTasks: [
+        {
+          taskCode: 'beanSign',
+          taskName: '签到',
+          enabled: true,
+        },
+        {
+          taskCode: 'plantBean',
+          taskName: '种豆得豆',
+          enabled: true,
+        }
+      ]
     },
     {
       name: '米游社-原神签到',
