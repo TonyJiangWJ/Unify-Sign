@@ -13,6 +13,20 @@ function BeanCollector () {
   const _package_name = 'com.jingdong.app.mall'
   const jingdongConfig = config.jingdong_config
   this.retryTime = 0
+  this.subTasks = config.supported_signs.filter(task => task.taskCode === 'JingDong')[0].subTasks || [
+    {
+      taskCode: 'beanSign',
+      taskName: '签到',
+      enabled: true,
+    },
+    {
+      taskCode: 'plantBean',
+      taskName: '种豆得豆',
+      enabled: true,
+    }
+  ]
+  const SIGN = this.subTasks[0]
+  const BEAN = this.subTasks[1]
 
   /***********************
    * 综合操作
@@ -26,6 +40,9 @@ function BeanCollector () {
   }
 
   this.execCollectBean = function () {
+    if (this.isSubTaskExecuted(SIGN)) {
+      return true
+    }
     let homePageCollectWidget = WidgetUtils.widgetGetOne(jingdongConfig.home_entry || '领京豆')
     let entered = false
     if (!this.displayButtonAndClick(homePageCollectWidget, '查找领京豆成功')) {
@@ -50,7 +67,7 @@ function BeanCollector () {
         } else {
           this.displayButtonAndClick(doSignBtn, '完成签到')
         }
-        this.setExecuted()
+        this.setSubTaskExecuted(SIGN)
         return true
       }
     } else {
@@ -77,6 +94,11 @@ function BeanCollector () {
       this.exec()
       return
     }
+    // TODO 京豆签到
+    if (!this.isSubTaskExecuted(BEAN)) {
+      this.setSubTaskExecuted(BEAN)
+    }
+    this.setExecuted()
     commonFunctions.minimize(_package_name)
   }
 }

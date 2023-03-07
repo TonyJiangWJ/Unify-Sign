@@ -11,6 +11,7 @@ function SignRunner () {
   BaseSignRunner.call(this)
   const _package_name = 'com.taobao.taobao'
   const storageHelper = new SignStorageHelper(this)
+  this.countdownLimitCounter = 0
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -95,6 +96,11 @@ function SignRunner () {
   }
 
   this.checkCountdownBtn = function (waitForNext) {
+    if (this.countdownLimitCounter > 4) {
+      logUtils.warnInfo(['可能界面有弹窗导致卡死，直接返回并创建五分钟后的定时启动'])
+      this.createNextSchedule(this.taskCode, new Date().getTime() + 300 * 1000)
+      return
+    }
     let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
     if (awardCountdown) {
       this.displayButton(awardCountdown, '可以领')
@@ -103,6 +109,7 @@ function SignRunner () {
       if (this.closeDialogIfPossible()) {
         logUtils.debugInfo(['通过弹窗浏览广告'])
       }
+      this.countdownLimitCounter++
       this.checkCountdownBtn(waitForNext)
     } else {
       let countdown = widgetUtils.widgetGetOne(/((\d+:){2}\d+$)/, null, true, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
@@ -215,7 +222,7 @@ function SignRunner () {
 
 
   this.closeDialogIfPossible = function () {
-    let toUse = widgetUtils.alternativeWidget('去使用', '立即赚元宝', 3000, true)
+    let toUse = widgetUtils.alternativeWidget('去使用', '立即领\\d+元宝', 3000, true)
     if (toUse.value == 1) {
       automator.clickCenter(toUse.target)
       sleep(3000)
