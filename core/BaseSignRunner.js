@@ -1,3 +1,4 @@
+let { config } = require('../config.js')(runtime, this)
 let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)
 let commonFunctions = singletonRequire('CommonFunction')
 let WidgetUtils = singletonRequire('WidgetUtils')
@@ -16,7 +17,7 @@ function BaseSignRunner () {
   this.taskCode = ''
   this.subTasks = []
   this.executedSuccess = false
-  this.initStorages()
+
   this.setName = function (name) {
     this.name = name
     return this
@@ -160,7 +161,12 @@ function BaseSignRunner () {
   this.displayButtonAndClick = function (button, desc, delay) {
     this.displayButton(button, desc, delay)
     if (button) {
-      automator.clickCenter(button)
+      if (automator.checkCenterClickable(button)) {
+        automator.clickCenter(button)
+      } else {
+        logUtils.errorInfo(['按钮位置不正确无法点击，请检查代码'], true)
+        return false
+      }
     }
     return button
   }
@@ -427,14 +433,43 @@ function BaseSignRunner () {
           executeCost: now.getTime() - schedule.realExecuteTime,
           modifyTime: new Date(),
         }
+        if (forUpdate.executeCost > ~(1<<31)) {
+          logUtils.warnInfo(['当前任务起始时间不正确：{}-{}', schedule.id, schedule.taskCode])
+          forUpdate.executeCost = now.getTime() - schedule.executeTime
+        }
         signTaskService.updateTaskScheduleById(schedule.id, forUpdate)
       })
 
+  }
+
+  this.createStoreOperator = function (storeKey, initValue) {
+    return new StoreOperator(this, storeKey, initValue)
+  }
+
+  // 初始化存储
+  this.initStorages()
+
+  function StoreOperator (_this, storeKey, initValue) {
+    this.storeKey = storeKey
+    _this.initDailyStorage(storeKey, initValue)
+  
+    this.updateStorageValue = function (update) {
+      let value = _this.getDailyStorage(this.storeKey)
+      update(value)
+      _this.setDailyStorage(this.storeKey, value)
+    }
+  
+    this.getValue = function () {
+      return _this.getDailyStorage(this.storeKey)
+    }
+  }
+
+  this.cvt = function (position) {
+    return parseInt(config.scaleRate * position)
   }
 }
 /**
  * 初始化自定义存储，用于每日数据缓存
  */
-BaseSignRunner.prototype.initStorages = () => {}
-
+BaseSignRunner.prototype.initStorages = () => { }
 module.exports = BaseSignRunner

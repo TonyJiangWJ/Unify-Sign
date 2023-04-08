@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-03-07 19:14:43
+ * @Last Modified time: 2023-04-08 18:42:13
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -219,6 +219,10 @@ config.scaleRate = (() => {
   } else if (width < 1000) {
     return 720 / 1080
   } else {
+    if (config.device_width * config.device_height > 3000000) {
+      // K50U 1.5k屏幕
+      return config.device_width / 1080
+    }
     return 1
   }
 })()
@@ -247,7 +251,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.5.4'
+config.code_version = 'v2.0.6'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
