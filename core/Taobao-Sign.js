@@ -8,9 +8,14 @@ let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
-  BaseSignRunner.call(this)
+
   const _package_name = 'com.taobao.taobao'
   const storageHelper = new SignStorageHelper(this)
+  this.initStorages = function () {
+    storageHelper.initStorages()
+  }
+
+  BaseSignRunner.call(this)
   this.countdownLimitCounter = 0
 
   this.launchTaobao = function () {
@@ -194,14 +199,23 @@ function SignRunner () {
 
   this.doSearching = function () {
     if (widgetUtils.idWaiting('com.taobao.taobao:id/dynamic_container')) {
-      let searchIcon = selector().clickable().depth(11).boundsInside(0, 0, 0.5 * config.device_width, 0.6 * config.device_height).findOne(config.timeout_existing || 8000)
-      if (searchIcon) {
+      FloatyInstance.setFloatyText('查找推荐商品')
+      let countDown = new java.util.concurrent.CountDownLatch(1)
+      let searchIcon = null
+      threads.start(function() {
+        searchIcon = selector().clickable().className('android.view.View').boundsInside(0, 0, 0.8 * config.device_width, 0.7 * config.device_height).untilFind()
+        countDown.countDown()
+      })
+      countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      if (searchIcon && searchIcon.length > 1 && (searchIcon = searchIcon[1])) {
         this.displayButtonAndClick(searchIcon, '推荐商品')
         sleep(1000)
         this.doBrowsing('浏览本页面.*')
         sleep(1000)
-        automator.back()
+      } else {
+        FloatyInstance.setFloatyText('未找到推荐商品')
       }
+      automator.back()
     }
     sleep(1000)
     automator.back()
@@ -238,10 +252,6 @@ function SignRunner () {
     return false
   }
 
-  this.initStorages = function () {
-    storageHelper.initStorages()
-  }
-
   this.exec = function () {
     this.launchTaobao(_package_name)
     sleep(1000)
@@ -263,26 +273,21 @@ function SignStorageHelper (runner) {
   const COUNTDOWN_CHECKING = "TB_COUNTDOWN_CHECKING"
   this.initStorages = function () {
     // 逛一逛任务是否完成
-    runner.initDailyStorage(HANG_WORK_DONE, { executed: false, count: 0 })
+    this.hangStore = runner.createStoreOperator(HANG_WORK_DONE, { executed: false, count: 0 })
     // 是否执行过倒计时
-    runner.initDailyStorage(COUNTDOWN_CHECKING, { executed: false, count: 0 })
+    this.countdownStore = runner.createStoreOperator(COUNTDOWN_CHECKING, { executed: false, count: 0 })
   }
 
   this.isHangTaskDone = function () {
-    let value = runner.getDailyStorage(HANG_WORK_DONE)
-    return value.executed
+    return this.hangStore.getValue().executed
   }
 
   this.incrHangTask = function () {
-    let value = runner.getDailyStorage(HANG_WORK_DONE)
-    value.count += 1
-    runner.setDailyStorage(HANG_WORK_DONE, value)
+    this.hangStore.updateStorageValue(storeValue => storeValue.count += 1)
   }
 
   this.setHangTaskDone = function () {
-    let value = runner.getDailyStorage(HANG_WORK_DONE)
-    value.executed = true
-    runner.setDailyStorage(HANG_WORK_DONE, value)
+    this.hangStore.updateStorageValue(storeValue => storeValue.executed = true)
   }
 
   /**
@@ -290,16 +295,16 @@ function SignStorageHelper (runner) {
    * @param {boolean} realExecuted 是否真实的运行过
    */
   this.incrCountdown = function (realExecuted) {
-    let value = runner.getDailyStorage(COUNTDOWN_CHECKING)
-    value.count += 1
-    if (realExecuted) {
-      value.executed = true
-    }
-    runner.setDailyStorage(COUNTDOWN_CHECKING, value)
+    this.countdownStore.updateStorageValue(value => {
+      value.count += 1
+      if (realExecuted) {
+        value.executed = true
+      }
+    })
   }
 
   this.checkIsCountdownExecuted = function () {
-    let executeInfo = runner.getDailyStorage(COUNTDOWN_CHECKING)
+    let executeInfo = this.countdownStore.getValue()
     if (executeInfo.executed || executeInfo.count >= 3) {
       return true
     }

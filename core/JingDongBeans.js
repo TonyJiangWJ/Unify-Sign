@@ -2,7 +2,7 @@
 let { config } = require('../config.js')(runtime, this)
 let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)
 
-let WidgetUtils = singletonRequire('WidgetUtils')
+let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
 let FloatyInstance = singletonRequire('FloatyUtil')
@@ -39,50 +39,108 @@ function BeanCollector () {
     sleep(1000)
   }
 
-  this.execCollectBean = function () {
-    if (this.isSubTaskExecuted(SIGN)) {
-      return true
-    }
-    let homePageCollectWidget = WidgetUtils.widgetGetOne(jingdongConfig.home_entry || '领京豆')
+  this.openBeanPage = function () {
+    let homePageCollectWidget = widgetUtils.widgetGetOne(jingdongConfig.home_entry || '领京豆')
     let entered = false
     if (!this.displayButtonAndClick(homePageCollectWidget, '查找领京豆成功')) {
       FloatyInstance.setFloatyInfo({
         x: 500,
         y: 500
       }, '查找领京豆失败，准备点击 我的')
-      let mine = WidgetUtils.widgetGetOne(jingdongConfig.mine || '我的')
+      let mine = widgetUtils.widgetGetOne(jingdongConfig.mine || '我的')
       if (this.displayButtonAndClick(mine, '我的')) {
-        let entry = WidgetUtils.widgetGetOne(jingdongConfig.mine_entry || '京豆')
+        let entry = widgetUtils.widgetGetOne(jingdongConfig.mine_entry || '京豆')
         entered = !!this.displayButtonAndClick(entry)
       }
     } else {
       entered = true
     }
-    if (entered) {
-      let doSignBtn = WidgetUtils.widgetGetOne(jingdongConfig.sign_button || '.*(签到领|已签到|已连签|明天签到).*')
-      if (doSignBtn) {
-        let content = doSignBtn.desc() || doSignBtn.text()
-        if (new RegExp(jingdongConfig.already_signed || '(已签到|已连签|明天签到).*').test(content)) {
-          this.displayButton(doSignBtn, '今日已完成签到')
-        } else {
-          this.displayButtonAndClick(doSignBtn, '完成签到')
-        }
-        this.setSubTaskExecuted(SIGN)
-        return true
-      }
-    } else {
+    if (!entered) {
       FloatyInstance.setFloatyInfo({
         x: 500, y: 500
       }, '无法找到指定控件，签到失败')
       sleep(2000)
-      return false
     }
+    sleep(1500)
+    return widgetUtils.widgetWaiting('领京豆', 3000)
+  }
+
+  /**
+   * 执行签到
+   * @returns 
+   */
+  this.execCollectBean = function () {
+    if (this.isSubTaskExecuted(SIGN)) {
+      return
+    }
+
+    let doSignBtn = widgetUtils.widgetGetOne(jingdongConfig.sign_button || '.*(签到领|已签到|已连签|明天签到).*')
+    if (doSignBtn) {
+      let content = doSignBtn.desc() || doSignBtn.text()
+      if (new RegExp(jingdongConfig.already_signed || '(已签到|已连签|明天签到).*').test(content)) {
+        this.displayButton(doSignBtn, '今日已完成签到')
+      } else {
+        this.displayButtonAndClick(doSignBtn, '完成签到')
+      }
+      FloatyInstance.setFloatyText('验证是否完成签到')
+      if (widgetUtils.widgetWaiting(jingdongConfig.already_signed || '(已签到|已连签|明天签到).*')) {
+        this.setSubTaskExecuted(SIGN)
+      } else {
+        FloatyInstance.setFloatyText('无法验证是否正确签到')
+      }
+    }
+  }
+
+  /**
+   * 执行种豆得豆
+   *
+   * @returns 
+   */
+  this.execPlantBean = function () {
+    if (this.isSubTaskExecuted(BEAN)) {
+      return
+    }
+    let entryPoint = {
+      x: jingdongConfig.plant_bean_enter_x | this.cvt(1000), y: jingdongConfig.plant_bean_enter_y | this.cvt(1300)
+    }
+    FloatyInstance.setFloatyInfo(entryPoint, '种豆得豆入口')
+    automator.click(entryPoint.x, entryPoint.y)
+    sleep(1000)
+    if (!widgetUtils.widgetWaiting('豆苗成长值')) {
+      FloatyInstance.setFloatyInfo({ x: 500, y: 500 }, '查找 豆苗成长值 失败')
+      return
+    }
+    let dailySign = widgetUtils.widgetGetOne('每日签到')
+    this.displayButtonAndClick(dailySign, '每日签到')
+    let collectCountdown = widgetUtils.widgetGetOne('点击领取')
+    this.displayButtonAndClick(collectCountdown, '倒计时领取')
+    collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
+    if (collectCountdown) {
+      let countdown = collectCountdown.content
+      let result = /(\d+):(\d+):(\d+)/.exec(countdown)
+      let remain = parseInt(result[1]) * 60 + parseInt(result[2]) + 1
+      FloatyInstance.setFloatyInfo({
+        x: collectCountdown.target.bounds().centerX(),
+        y: collectCountdown.target.bounds().centerY()
+      }, '剩余时间：' + remain + '分')
+      this.createNextSchedule(this.taskCode + ':' + BEAN.taskCode, new Date().getTime() + remain * 60000)
+    }
+    this.setSubTaskExecuted(BEAN)
   }
 
   this.exec = function () {
     startApp()
     this.awaitAndSkip()
-    if (!this.execCollectBean()) {
+    if (this.openBeanPage()) {
+      // 等待加载动画
+      sleep(1000)
+      // 京豆签到
+      this.execCollectBean()
+      // 种豆得豆
+      this.execPlantBean()
+
+      this.setExecuted()
+    } else {
       if (this.retryTime++ >= 3) {
         FloatyInstance.setFloatyText('重试次数过多，签到失败')
         commonFunctions.minimize(_package_name)
@@ -94,11 +152,6 @@ function BeanCollector () {
       this.exec()
       return
     }
-    // TODO 京豆签到
-    if (!this.isSubTaskExecuted(BEAN)) {
-      this.setSubTaskExecuted(BEAN)
-    }
-    this.setExecuted()
     commonFunctions.minimize(_package_name)
   }
 }

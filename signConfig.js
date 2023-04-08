@@ -34,6 +34,9 @@ module.exports = function (default_config, config, CONFIG_STORAGE_NAME) {
     mine_entry: '京豆',
     sign_button: '.*(签到领|已签到|已连签|明天签到).*',
     already_signed: '(已签到|已连签|明天签到).*',
+    // 种豆得豆入口
+    plant_bean_enter_x: 1000,
+    plant_bean_enter_y: 1300,
   }, [])
 
   // 执行扩展配置

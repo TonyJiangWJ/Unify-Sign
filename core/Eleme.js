@@ -19,9 +19,13 @@ let localOcrUtil = require('../lib/LocalOcrUtil.js')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
+  const DAILY_SIGNED = 'eleme_DAILY_SIGNED'
+  this.initStorages = function () {
+    // 是否执行过签到
+    this.signedStore = this.createStoreOperator(DAILY_SIGNED, { executed: false, count: 0 })
+  }
   BaseSignRunner.call(this)
   let _package_name = 'me.ele'
-
   /**
    *  扩展exec代码 实现具体的签到逻辑
    */
@@ -35,26 +39,32 @@ function SignRunner () {
       let rewardButton = this.captureAndCheckByOcr('.*(赚|賺)吃货豆.*', '赚吃货豆', null, null, true, 3)
       if (rewardButton) {
         sleep(1000)
-        let signBtn = this.captureAndCheckByOcr('立即签到', '立即签到')//widgetUtils.widgetGetOne('立即签到')
-        if(signBtn) {
-          signBtn = this.wrapOcrPointWithBounds(signBtn)
-          boundsInfo = signBtn.bounds()
-          FloatyInstance.setFloatyInfo({x: boundsInfo.centerX(), y: boundsInfo.centerY()}, '立即签到')
-          sleep(500)
-          automator.clickCenter(signBtn)
-          sleep(1000)
-          this.captureAndCheckByOcr('.*收下.*', '收下', null, null, true)
-          this.doHangTasks()
-          this.setExecuted()
-        } else {
-          FloatyInstance.setFloatyText('未找到立即签到按钮')
-          let signed = this.captureAndCheckByOcr('今日已签到.*', '今日已签到')
-          if (signed) {
-            FloatyInstance.setFloatyText('今日已签到')
-            this.doHangTasks()
-            this.setExecuted()
+        if (!this.signedStore.getValue().executed) {
+          let signBtn = this.captureAndCheckByOcr('立即签到|今日签到.*', '立即签到')//widgetUtils.widgetGetOne('立即签到')
+          if (signBtn) {
+            signBtn = this.wrapOcrPointWithBounds(signBtn)
+            boundsInfo = signBtn.bounds()
+            FloatyInstance.setFloatyInfo({ x: boundsInfo.centerX(), y: boundsInfo.centerY() }, '立即签到')
+            sleep(500)
+            automator.clickCenter(signBtn)
+            sleep(1000)
+            this.captureAndCheckByOcr('.*收下.*', '收下', null, null, true)
+            this.signedStore.updateStorageValue(value => value.executed = true)
+          } else {
+            FloatyInstance.setFloatyText('未找到立即签到按钮')
+            let signed = widgetUtils.widgetCheck('(今日已|明日)签到.*', 1500) || this.captureAndCheckByOcr('(今日已|明日)签到.*', '今日已签到')
+            if (signed) {
+              FloatyInstance.setFloatyText('今日已签到')
+              this.signedStore.updateStorageValue(value => value.executed = true)
+            } else {
+              FloatyInstance.setFloatyText('无法确定今日是否成功签到')
+            }
           }
+        } else {
+          FloatyInstance.setFloatyText('今日已签到，不再检测是否已签到')
         }
+        this.doHangTasks()
+        this.setExecuted()
       } else {
         FloatyInstance.setFloatyText('未找到赚吃货豆按钮')
       }
@@ -68,8 +78,9 @@ function SignRunner () {
   /**
    * 执行逛逛任务
    */
-  this.doHangTasks = function () {
-    let browseAndReward = this.captureAndCheckByOcr('浏览(赚|賺)豆', '浏览赚豆', null, null, true)
+  this.doHangTasks = function (hangLimit) {
+    hangLimit = hangLimit || 5
+    let browseAndReward = this.captureAndCheckByOcr('浏览(.)豆', '浏览赚豆', [config.device_width * 0.5, 0, config.device_width * 0.5, config.device_height], null, true)
     if (!browseAndReward) {
       FloatyInstance.setFloatyText('未找到浏览赚豆')
       // 自动设置五分钟后继续
@@ -78,7 +89,7 @@ function SignRunner () {
     }
     let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
     // 增加限制 避免进入死循环 这里大概就11个
-    let limit = 15, lastTask = null, region = null
+    let limit = 15, lastTask = null, region = null, executed = false
     while (checkBtn && limit-- > 0) {
       let bds = checkBtn.bounds()
       let checkTaskInfo = this.captureAndGetOcrText('任务信息', [0, bds.top - bds.height(), bds.left, bds.height() * 2.5])
@@ -113,10 +124,20 @@ function SignRunner () {
       }
       sleep(2000)
       checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', region)
+      executed = true
     }
     if (!checkBtn) {
+      if (executed && --hangLimit > 0) {
+        FloatyInstance.setFloatyText('退出并重新进入当前页面，刷新列表')
+        automator.back()
+        sleep(1000)
+        if (this.captureAndCheckByOcr('.*(赚|賺)吃货豆.*', '赚吃货豆', null, null, true, 3)) {
+          return this.doHangTasks(hangLimit)
+        }
+      }
       FloatyInstance.setFloatyText('未找到去(浏览|逛逛|完成)')
     }
+    return true
   }
 
   this.openEleme = function () {
@@ -136,4 +157,5 @@ function SignRunner () {
 
 SignRunner.prototype = Object.create(BaseSignRunner.prototype)
 SignRunner.prototype.constructor = SignRunner
+
 module.exports = new SignRunner()
