@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-04-08 18:42:13
+ * @Last Modified time: 2023-04-11 10:01:11
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -82,6 +82,7 @@ let default_config = {
   webview_loging: false,
   // 本地ocr优先级
   local_ocr_priority: 'auto',
+  other_accessisibility_services: '',
   supported_signs: [
     {
       name: '蚂蚁积分签到',
@@ -251,7 +252,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.6'
+config.code_version = 'v2.0.6.1'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

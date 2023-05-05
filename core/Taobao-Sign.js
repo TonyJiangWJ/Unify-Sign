@@ -17,6 +17,7 @@ function SignRunner () {
 
   BaseSignRunner.call(this)
   this.countdownLimitCounter = 0
+  this.finishThisLoop = false
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -104,6 +105,7 @@ function SignRunner () {
     if (this.countdownLimitCounter > 4) {
       logUtils.warnInfo(['可能界面有弹窗导致卡死，直接返回并创建五分钟后的定时启动'])
       this.createNextSchedule(this.taskCode, new Date().getTime() + 300 * 1000)
+      this.finishThisLoop = true
       return
     }
     let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
@@ -158,6 +160,9 @@ function SignRunner () {
       let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
       if (moreCoins) {
         this.checkCountdownBtn()
+        if (this.finishThisLoop) {
+          return
+        }
         this.displayButtonAndClick(moreCoins.target, moreCoins.content)
         sleep(1000)
         sleep(1000)
@@ -190,7 +195,7 @@ function SignRunner () {
         }
         this.checkCountdownBtn(true)
         sleep(1000)
-        if (!noMore) {
+        if (!noMore && !this.finishThisLoop) {
           this.browseAds()
         }
       }

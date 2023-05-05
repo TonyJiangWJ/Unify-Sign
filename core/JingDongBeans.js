@@ -6,6 +6,7 @@ let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
 let FloatyInstance = singletonRequire('FloatyUtil')
+let logUtils = singletonRequire('LogUtils')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function BeanCollector () {
@@ -110,11 +111,8 @@ function BeanCollector () {
       FloatyInstance.setFloatyInfo({ x: 500, y: 500 }, '查找 豆苗成长值 失败')
       return
     }
-    let dailySign = widgetUtils.widgetGetOne('每日签到')
-    this.displayButtonAndClick(dailySign, '每日签到')
-    let collectCountdown = widgetUtils.widgetGetOne('点击领取')
-    this.displayButtonAndClick(collectCountdown, '倒计时领取')
-    collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
+    this.collectClickableBall()
+    let collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
     if (collectCountdown) {
       let countdown = collectCountdown.content
       let result = /(\d+):(\d+):(\d+)/.exec(countdown)
@@ -123,9 +121,33 @@ function BeanCollector () {
         x: collectCountdown.target.bounds().centerX(),
         y: collectCountdown.target.bounds().centerY()
       }, '剩余时间：' + remain + '分')
+      sleep(1000)
+      
+      if (remain >= 120) {
+        logUtils.logInfo(['倒计时：{} 超过两小时，设置两小时后来检查', remain])
+        remain = 120
+      }
       this.createNextSchedule(this.taskCode + ':' + BEAN.taskCode, new Date().getTime() + remain * 60000)
     }
+    // TODO 完成日常任务
     this.setSubTaskExecuted(BEAN)
+  }
+
+  this.collectClickableBall = function (tryTime) {
+    if (typeof tryTime == 'undefined') {
+      tryTime = 3
+    }
+    if (tryTime <= 0) {
+      return
+    }
+    let clickableBall = widgetUtils.widgetGetOne('x[1-9]+')
+    if (this.displayButtonAndClick(clickableBall, '可收集' + (clickableBall ? clickableBall.text() : ''))) {
+      sleep(500)
+      auto.clearCache && auto.clearCache()
+      this.collectClickableBall(--tryTime)
+    } else {
+      FloatyInstance.setFloatyText('无可收集内容')
+    }
   }
 
   this.exec = function () {
