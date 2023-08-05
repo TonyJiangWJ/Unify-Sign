@@ -14,6 +14,8 @@ let widgetUtils = singletonRequire('WidgetUtils')
 let automator = singletonRequire('Automator')
 // 大部分的公共方法 按需引用
 let commonFunctions = singletonRequire('CommonFunction')
+// 日志打印 按需引用
+let logUtils = singletonRequire('LogUtils')
 // 本地OCR工具 按需引用
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
 

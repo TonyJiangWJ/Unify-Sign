@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-11-16 19:07:30
+ * @Last Modified time: 2023-07-19 23:38:40
  * @Description: 
  */
 
@@ -68,7 +68,12 @@ function SignRunner () {
   }
 
   this.collectAlipayTask = function () {
-    this.captureAndCheckByImg(bb_farm_config.task_btn_alipay, '每日任务', null, true)
+    if (!this.captureAndCheckByImg(bb_farm_config.task_btn_alipay, '每日任务', null, true)) {
+      FloatyInstance.setFloatyText('通过图片查找每日任务入口失败')
+      if (this.captureAndCheckByOcr('领肥料', '每日任务入口：领肥料', null, null, true)) {
+        logUtils.debugInfo(['通过OCR查找入口成功'])
+      }
+    }
     sleep(1000)
     let collect = widgetUtils.widgetGetOne('^领取$')
     while (collect) {

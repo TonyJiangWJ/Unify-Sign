@@ -35,7 +35,7 @@ function BeanCollector () {
 
   // 进入京东app
   function startApp () {
-    logInfo('启动京东应用')
+    logUtils.logInfo('启动京东应用')
     launch(_package_name)
     sleep(1000)
   }
@@ -63,7 +63,7 @@ function BeanCollector () {
       sleep(2000)
     }
     sleep(1500)
-    return widgetUtils.widgetWaiting('领京豆', 3000)
+    return widgetUtils.widgetWaiting('领京豆', null, 3000)
   }
 
   /**
@@ -97,10 +97,11 @@ function BeanCollector () {
    *
    * @returns 
    */
-  this.execPlantBean = function () {
+  this.execPlantBean = function (doubleCheck) {
     if (this.isSubTaskExecuted(BEAN)) {
       return
     }
+    debugInfo(['种豆得豆子任务信息{}', JSON.stringify(BEAN)])
     let entryPoint = {
       x: jingdongConfig.plant_bean_enter_x | this.cvt(1000), y: jingdongConfig.plant_bean_enter_y | this.cvt(1300)
     }
@@ -109,7 +110,10 @@ function BeanCollector () {
     sleep(1000)
     if (!widgetUtils.widgetWaiting('豆苗成长值')) {
       FloatyInstance.setFloatyInfo({ x: 500, y: 500 }, '查找 豆苗成长值 失败')
-      return
+      if (doubleCheck) {
+        return
+      }
+      return this.execPlantBean(true)
     }
     this.collectClickableBall()
     let collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
@@ -123,9 +127,10 @@ function BeanCollector () {
       }, '剩余时间：' + remain + '分')
       sleep(1000)
       
-      if (remain >= 120) {
-        logUtils.logInfo(['倒计时：{} 超过两小时，设置两小时后来检查', remain])
-        remain = 120
+      if (remain >= jingdongConfig.plant_min_gaps || 120) {
+        let settingMinGaps = jingdongConfig.plant_min_gaps || 120
+        logUtils.logInfo(['倒计时：{} 超过{}分，设置{}分钟后来检查', remain, settingMinGaps, settingMinGaps])
+        remain = settingMinGaps
       }
       this.createNextSchedule(this.taskCode + ':' + BEAN.taskCode, new Date().getTime() + remain * 60000)
     }
@@ -150,12 +155,21 @@ function BeanCollector () {
     }
   }
 
+  this.closePopup = function () {
+    let okBtn = widgetUtils.widgetGetOne('.*知道了.*', 4000)
+    if (okBtn) {
+      okBtn.click()
+      sleep(1500)
+    }
+  }
+
   this.exec = function () {
     startApp()
     this.awaitAndSkip()
     if (this.openBeanPage()) {
       // 等待加载动画
       sleep(1000)
+      this.closePopup()
       // 京豆签到
       this.execCollectBean()
       // 种豆得豆

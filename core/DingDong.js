@@ -189,15 +189,19 @@ function SignRunner () {
     if (this.isSubTaskExecuted(CREDIT_SIGN)) {
       return
     }
-    let pointEntry = widgetUtils.widgetGetOne('积分')
+    let pointEntry = widgetUtils.widgetGetOne('(福利.*)?积分')
     if (pointEntry) {
       this.displayButtonAndClick(pointEntry, '领积分', 1000)
-      if (widgetUtils.widgetCheck('积分规则')) {
+      if (widgetUtils.widgetCheck('积分规则|福利中心')) {
         FloatyInstance.setFloatyText('进入积分界面成功')
         sleep(1000)
         let findType = widgetUtils.alternativeWidget('立即签到领积分', '今日已签到.*')
         if (findType === 1) {
-          this.captureAndCheckByImg(sign_and_get_points, '签到领积分', null, true)
+          // 先尝试图片识别，因为控件可能位置不正确
+          if(!this.captureAndCheckByImg(sign_and_get_points, '签到领积分', null, true)) {
+            let signBtn = widgetUtils.widgetGetOne('立即签到领积分')
+            this.displayButtonAndClick(signBtn, '立即签到')
+          }
           this.setSubTaskExecuted(CREDIT_SIGN)
         } else {
           if (findType === 2) {

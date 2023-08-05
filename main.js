@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-02-01 10:08:55
+ * @Last Modified time: 2023-07-18 09:48:09
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -33,7 +33,13 @@ logInfo('======初始化SQLite=======')
 let signTaskService = singletonRequire('SignTaskService')
 let signTaskManager = singletonRequire('SignTaskManager')
 // 初始化数据库连接
-signTaskService.init()
+try {
+  signTaskService.init()
+} catch (e) {
+  errorInfo('初始化数据库连接失败，五分钟后重试' + e)
+  commonFunctions.setUpAutoStart(5)
+  exit()
+}
 // debugInfo(['任务分组数据：{}', JSON.stringify(signTaskService.listGroupScheduleConfig())])
 logInfo('======初始化SQLite成功=======')
 

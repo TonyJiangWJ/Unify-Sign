@@ -5,6 +5,7 @@ let automator = singletonRequire('Automator')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let logUtils = singletonRequire('LogUtils')
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
+let signFailedUtil = singletonRequire('SignFailedUtil')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
@@ -18,6 +19,7 @@ function SignRunner () {
   BaseSignRunner.call(this)
   this.countdownLimitCounter = 0
   this.finishThisLoop = false
+  this.browseAdCount = 0
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -34,12 +36,15 @@ function SignRunner () {
   this.checkAndCollect = function () {
     let signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到'), '找到了签到按钮')
     if (signBtn) {
-      widgetUtils.widgetWaiting('去赚元宝')
+      widgetUtils.widgetWaiting('去赚元宝', null, 2000)
       sleep(1000)
       this.checkDailySign()
       this.browseAds()
       if (this.signed) {
         this.setExecuted()
+      } else {
+        // 可能有问题 直接杀死淘宝
+        commonFunctions.killCurrentApp()
       }
       // 签到是成功了，但是未主动设置定时任务，估计有问题
       if (!storageHelper.checkIsCountdownExecuted()) {
@@ -92,6 +97,7 @@ function SignRunner () {
           } else {
             FloatyInstance.setFloatyText('未找到继续领现金，签到失败')
             commonFunctions.increaseTbFailedCount()
+            signFailedUtil.recordFailedScreen(screen, this.taskCode, '签到')
           }
           sleep(1000)
         }
@@ -108,7 +114,8 @@ function SignRunner () {
       this.finishThisLoop = true
       return
     }
-    let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
+    FloatyInstance.setFloatyText('查找是否存在 点击领取')
+    let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
     if (awardCountdown) {
       this.displayButton(awardCountdown, '可以领')
       automator.clickCenter(awardCountdown)
@@ -119,12 +126,16 @@ function SignRunner () {
       this.countdownLimitCounter++
       this.checkCountdownBtn(waitForNext)
     } else {
-      let countdown = widgetUtils.widgetGetOne(/((\d+:){2}\d+$)/, null, true, null, m => m.boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.4))
+      FloatyInstance.setFloatyText('查找是否存在 倒计时')
+      let countdown = widgetUtils.widgetGetOne('倒计时', null, true, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
       if (countdown) {
-        FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '剩余时间：' + countdown.content)
+        // FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '剩余时间：' + countdown.content)
+        let screen = commonFunctions.checkCaptureScreenPermission()
+        let content = localOcrUtil.recognize(screen, this.boundsToRegion(countdown.bounds))
+        logUtils.debugInfo(['ocr识别文本信息：{}', content])
         sleep(1000)
         let regex = /((\d+(:?)){1,3})/
-        let text = countdown.content
+        let text = content
         if (regex.test(text)) {
           text = regex.exec(text)[1]
           regex = /(\d+(:?))/g
@@ -159,8 +170,13 @@ function SignRunner () {
     } else {
       let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
       if (moreCoins) {
-        this.checkCountdownBtn()
+        this.checkCountdownBtn() 
         if (this.finishThisLoop) {
+          return
+        }
+        if (this.browseAdCount > 5) {
+          logUtils.errorInfo(['当前浏览广告次数过多，可能存在异常，结束本次执行的广告浏览'])
+          this.finishThisLoop = true
           return
         }
         this.displayButtonAndClick(moreCoins.target, moreCoins.content)
@@ -171,6 +187,7 @@ function SignRunner () {
         if (this.displayButtonAndClick(hangout, '去逛逛')) {
           sleep(1000)
           this.doBrowsing()
+          this.browseAdCount++
           sleep(1000)
           automator.back()
         } else {
@@ -231,7 +248,8 @@ function SignRunner () {
     let endY = startY - config.device_height * 0.3
     automator.gestureDown(startY, endY)
     let start = new Date().getTime()
-    while (widgetUtils.widgetWaiting(content || '滑动浏览', null, 5000) && new Date().getTime() - start < 40000) {
+    let cost = null
+    while ((cost = new Date().getTime() - start) < 16000 || widgetUtils.widgetWaiting(content || '滑动浏览', null, 5000) && cost < 40000) {
       sleep(4000)
       automator.gestureDown(startY, endY)
     }

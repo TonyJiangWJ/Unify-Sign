@@ -1,9 +1,66 @@
+const SubTaskComponent = {
+  name: 'SubTaskComponent',
+  data() {
+    return {
+      subTaskChecked: []
+    }
+  },
+  props: {
+    subTasks: Array,
+  },
+  watch: {
+    subTaskChecked: {
+      deep:true,
+      immediate: false,
+      handler: function (v) {
+        this.subTasks.forEach(s => s.enabled = false)
+        if (v && v.length > 0) {
+          this.subTasks.filter(s => v.indexOf(s.taskCode) > -1).forEach(s => s.enabled = true)
+        }
+        console.log('sub task changed to:', JSON.stringify(this.subTasks))
+      }
+    },
+    subTasks: {
+      deep: true,
+      immediate: true,
+      handler: function (v) {
+        let newSubTaskChecked = this.subTasks.filter(v => v.enabled).map(v => v.taskCode)
+        if (JSON.stringify(newSubTaskChecked) != JSON.stringify(this.subTaskChecked)) {
+          console.log('触发更新', JSON.stringify(newSubTaskChecked), JSON.stringify(this.subTaskChecked))
+          this.subTaskChecked = newSubTaskChecked
+        }
+      }
+    }
+  },
+  methods: {
+    toggleSubTask (index) {
+      console.log('变更子任务索引：', index)
+      this.$refs.subTaskCheckboxes[index].toggle()
+    },
+  },
+  mounted() {
+    this.subTaskChecked = this.subTasks.filter(v => v.enabled).map(v => v.taskCode)
+  },
+  template: `
+  <van-checkbox-group v-model="subTaskChecked">
+    <van-cell-group style="padding-left: 0.45rem; font-size: 10px;">
+      <van-cell v-for="(subTask,index) in subTasks" :key="subTask.taskCode" :title="subTask.taskName" clickable @click="toggleSubTask(index)" stop-propagation>
+        <template #icon>
+          <van-checkbox :name="subTask.taskCode" ref="subTaskCheckboxes" style="margin-right: 1rem" />
+        </template>
+      </van-cell>
+    </van-cell-group>
+  </van-checkbox-group>
+  `
+}
+
 /**
  * 签到配置
  */
 const SignConfig = {
   name: 'SignConfig',
   mixins: [mixin_common],
+  components: { SubTaskComponent },
   data () {
     return {
       checked: [],
@@ -74,6 +131,12 @@ const SignConfig = {
             taskCode: 'Weibo',
             script: 'Weibo.js',
             enabled: true
+          },
+          {
+            name: '支付宝商家积分签到',
+            taskCode: 'AlipayMerchant',
+            script: 'AlipayMerchantCredits.js',
+            enabled: true
           }
         ]
       },
@@ -88,7 +151,9 @@ const SignConfig = {
   },
   methods: {
     onConfigLoad: function (config) {
-      this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.name)
+      console.log('加载完毕：current supported signs:', JSON.stringify(this.configs.supported_signs))
+      this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.taskCode)
+      console.log('checked:', JSON.stringify(this.checked))
     },
     toggle (index) {
       console.log('变更索引：', index)
@@ -115,10 +180,16 @@ const SignConfig = {
       console.log('before change', JSON.stringify(v))
       this.configs.supported_signs.forEach(s => s.enabled = false)
       if (v && v.length > 0) {
-        this.configs.supported_signs.filter(s => v.indexOf(s.name) > -1).forEach(s => s.enabled = true)
+        this.configs.supported_signs.filter(s => v.indexOf(s.taskCode) > -1).forEach(s => s.enabled = true)
       }
       console.log(JSON.stringify(this.checked))
     }
+  },
+  mounted() {
+    this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.taskCode)
+  },
+  beforeDestroy() {
+    console.log('组件销毁，当前配置信息：', JSON.stringify(this.configs))
   },
   template: `<div>
     <van-divider content-position="left">
@@ -131,7 +202,8 @@ const SignConfig = {
     </tip-block>
     <van-checkbox-group v-model="checked">
       <van-cell-group>
-        <van-swipe-cell v-for="(supportedSign,index) in configs.supported_signs" :key="supportedSign.name" stop-propagation>
+        <template v-for="(supportedSign,index) in configs.supported_signs" :key="supportedSign.taskCode">
+        <van-swipe-cell stop-propagation>
           <template #left>
             <div style="display:flex;height: 100%;">
               <van-button square type="primary" text="设置执行时间" @click="toScheduleConfig(supportedSign.taskCode)"/>
@@ -139,7 +211,7 @@ const SignConfig = {
           </template>
           <van-cell clickable :title="supportedSign.name" @click="toggle(index)" >
             <template #right-icon>
-              <van-checkbox :name="supportedSign.name" ref="checkboxes" />
+              <van-checkbox :name="supportedSign.taskCode" ref="checkboxes" v-show="!supportedSign.subTasks || supportedSign.subTasks.length == 0" />
             </template>
           </van-cell>
           <template #right>
@@ -148,6 +220,10 @@ const SignConfig = {
             </div>
           </template>
         </van-swipe-cell>
+        <template v-if="supportedSign.subTasks && supportedSign.subTasks.length > 0">
+          <sub-task-component :sub-tasks="supportedSign.subTasks" />
+        </template>
+        </template>
       </van-cell-group>
     </van-checkbox-group>
   </div>`

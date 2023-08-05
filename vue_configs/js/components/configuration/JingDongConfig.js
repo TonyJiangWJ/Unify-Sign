@@ -13,6 +13,7 @@ const JingDongConfig = {
         // 种豆得豆入口
         plant_bean_enter_x: 1000,
         plant_bean_enter_y: 1300,
+        plant_min_gaps: 120
       },
       signName: '京豆签到',
     }
@@ -44,5 +45,9 @@ const JingDongConfig = {
     <van-field v-model="configs.already_signed" label="校验已签到的正则" label-width="12em" type="text" placeholder="请输入校验用正则" input-align="right" />
     <number-field v-model="configs.plant_bean_enter_x" label="种豆得豆入口X" label-width="12em" placeholder="请输入入口横坐标位置" />
     <number-field v-model="configs.plant_bean_enter_y" label="种豆得豆入口X" label-width="12em" placeholder="请输入入口纵坐标位置" />
+    <tip-block>计算种豆得豆倒计时，超过此时间后设置最小间隔时间的倒计时避免被别人收走</tip-block>
+    <number-field v-model="configs.plant_min_gaps" label="种豆得豆最小检查间隔" label-width="12em" placeholder="请输入最小间隔" >
+      <template #right-icon><span>分</span></template>
+    </number-field>
   </div>`
 }
