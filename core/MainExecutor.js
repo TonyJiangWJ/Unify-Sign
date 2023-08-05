@@ -6,6 +6,7 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let signTaskService = singletonRequire('SignTaskService')
 let signTaskManager = singletonRequire('SignTaskManager')
 let logUtils = singletonRequire('LogUtils')
+let logFloaty = singletonRequire('LogFloaty')
 let formatDate = require('../lib/DateUtil.js')
 function MainExecutor () {
 
@@ -21,7 +22,7 @@ function MainExecutor () {
           signTaskManager.markScheduleDisabled(target.taskCode)
           return
         }
-        try { 
+        try {
           if (!require('./' + target.script).setName(target.name).setTaskCode(target.taskCode).setSubTasks(target.subTasks).executeIfNeeded()) {
             failedList.push(target.name)
             restart = true
@@ -41,41 +42,16 @@ function MainExecutor () {
         FloatyInstance.setFloatyText('有任务执行失败，设置五分钟后再试')
         logUtils.errorInfo(['执行失败的任务：{}', JSON.stringify(failedList)])
       } else {
-        FloatyInstance.setFloatyText('所有签到任务完成')
+        logFloaty.pushLog('所有签到任务完成')
         regenerateNextStartUp()
       }
       sleep(2000)
     }
   }
 
-  function getEnabledTasks() {
-    let enabledTasks = {}
-    config.supported_signs.filter(target => target.enabled)
-    .forEach(taskInfo => {
-      enabledTasks[taskInfo.taskCode] = taskInfo
-      if (taskInfo.subTasks && taskInfo.subTasks.length > 0) {
-        taskInfo.subTasks.forEach(subTask => {
-          enabledTasks[taskInfo.taskCode+':'+subTask.taskCode] = taskInfo
-        })
-      }
-    })
-    return enabledTasks
-  }
-
   function regenerateNextStartUp () {
     let now = new Date()
-    let date = formatDate(now, 'yyyy-MM-dd')
-    let scheduleList = signTaskService.listTaskScheduleByDate(date)
-    let enabledTasks = getEnabledTasks()
-    scheduleList = scheduleList.filter(schedule => {
-      let statusFlag = schedule.executeStatus != 'S' && schedule.executeStatus != 'F' && !!enabledTasks[schedule.taskCode]
-      if (statusFlag) {
-        // 如果有子任务 以子任务的状态为准
-        let subTaskSchedules = signTaskService.listSubTaskScheduleByDate(date, schedule.taskCode)
-        return !subTaskSchedules || subTaskSchedules.length <= 0
-      }
-      return statusFlag
-    })
+    let scheduleList = signTaskManager.getAllPendingScheduleList()
     if (scheduleList.length > 0) {
       let nextExecuteTime = scheduleList[0].executeTime
       if (nextExecuteTime <= now.getTime() + 5 * 60000) {

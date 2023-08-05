@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2022-12-12 11:04:46
+ * @Last Modified time: 2023-07-17 09:41:42
  * @Description: 
  */
 
@@ -113,6 +113,11 @@ function CreditRunner () {
       FloatyInstance.setFloatyText('未找到待领取积分')
       logUtils.logInfo(['未找到待领取积分'], true)
     }
+
+    // 每日签到完成或未找到签到，进入积分任务页面做浏览任务
+    this.enterCreditsTaskAndCheck()
+    commonFunctions.setAliCreditsSigned()
+
     sleep(500)
     FloatyInstance.setFloatyTextColor('#00ff00')
     FloatyInstance.setFloatyText('检测是否有今日支付积分')
@@ -127,34 +132,62 @@ function CreditRunner () {
     sleep(500)
   }
 
-  /**
-   * @deprecated 家庭积分目前感觉没有意义而且容易导致出错 不再执行
-   */
-  this.checkFamilyCredit = function () {
-    sleep(2000)
-    FloatyInstance.setFloatyText('等待家庭积分控件')
-    let limit = 5
-    let target = widgetUtils.widgetGetById(/.*h5_nav_options1/)
-    sleep(200)
-    if (target) {
-      this.displayButtonAndClick(target, '家庭积分')
-      if (widgetUtils.widgetWaiting('.*家庭共享积分.*', limit === 0 ? 2000 : null)) {
-        FloatyInstance.setFloatyText('进入家庭积分页面成功，等待3秒福袋动画结束')
-        sleep(2000)
-        this.collectFamily = true
-        this.collectCredits('家庭积分', _family_regex)
-        automator.back()
-      } else {
-        FloatyInstance.setFloatyTextColor('#ff0000')
-        FloatyInstance.setFloatyText('进入家庭积分页面失败')
-        logUtils.logInfo(['未找到待领取家庭积分'], true)
-      }
+  this.enterCreditsTaskAndCheck = function () {
+    let target = widgetUtils.widgetGetOne('每日签到')
+    if (this.displayButtonAndClick(target, '准备执行签到浏览任务')) {
+      sleep(1000)
+      this.doTask()
+      automator.back()
     } else {
-      FloatyInstance.setFloatyText('未找到待领取的家庭积分')
+      FloatyInstance.setFloatyText('未能找到每日签到入口')
+      sleep(1000)
     }
-    sleep(500)
   }
 
+  this.doTask = function () {
+
+    let startY = config.device_height - config.device_height * 0.15
+    let endY = startY - config.device_height * 0.3
+    FloatyInstance.setFloatyText('查找任务')
+    sleep(1000)
+    let toFinishList = widgetUtils.widgetGetAll('去完成')
+    let toFinishBtn = toFinishList.filter(v => {
+      let title = v.parent().child(1).text()
+      return title && title.indexOf('15秒') > -1
+    })
+    if (toFinishBtn && toFinishBtn.length > 0) {
+      toFinishBtn = toFinishBtn[0]
+    } else {
+      FloatyInstance.setFloatyText('非浏览任务，请手动执行')
+      sleep(1000)
+      toFinishBtn = null
+    }
+    if (this.displayButtonAndClick(toFinishBtn, '去完成', null, true)) {
+      widgetUtils.widgetWaiting('点击或滑动')
+      let limit = 16
+      while (limit-- > 0 && !this.captureAndCheckByOcr('返回领积分', '返回领积分', null, null, false, 1)) {
+        FloatyInstance.setFloatyText('等待' + limit + '秒')
+        automator.gestureDown(startY, endY)
+        sleep(1000)
+      }
+      if (currentPackage() != _package_name) {
+        return this.exec()
+      }
+      automator.back()
+      sleep(1000)
+      return this.doTask()
+    }
+    let browser15 = widgetUtils.widgetGetOne('逛15秒赚3积分')
+    if (widgetUtils.widgetCheck('.*点击或滑动以下内容.*', 3000) && this.displayButtonAndClick(browser15, '15秒任务')) {
+      sleep(1000)
+      let limit = 16
+      while (limit-- > 0 && widgetUtils.widgetCheck('.*点击或滑动以下内容.*', 3000)) {
+        FloatyInstance.setFloatyText('等待' + limit + '秒')
+        automator.gestureDown(startY, endY)
+        sleep(1000)
+      }
+    }
+  }
 
   this.exec = function () {
     FloatyInstance.setFloatyPosition(400, 400)
@@ -170,7 +203,7 @@ function CreditRunner () {
   }
 }
 
-CreditRunner.prototype = Object.create(BaseSignRunner.prototype) 
+CreditRunner.prototype = Object.create(BaseSignRunner.prototype)
 CreditRunner.prototype.constructor = CreditRunner
 
 module.exports = new CreditRunner()

@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-04-11 10:01:11
+ * @Last Modified time: 2023-08-05 18:19:37
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -178,6 +178,12 @@ let default_config = {
       taskCode: 'Smzdm',
       script: 'Smzdm.js',
       enabled: true
+    },
+    {
+      name: '支付宝商家积分签到',
+      taskCode: 'AlipayMerchant',
+      script: 'AlipayMerchantCredits.js',
+      enabled: true
     }
   ].concat(custom_config.supported_signs || [])
 }
@@ -194,12 +200,24 @@ Object.keys(default_config).forEach(key => {
   let storedVal = storageConfig.get(key)
   if (typeof storedVal !== 'undefined') {
     if (key === 'supported_signs') {
+      // supported_signs是一个对象，需要用对象来解析覆盖
       let stored = JSON.parse(JSON.stringify(storageConfig.get(key)))
+      // 需要考虑default_config有新增和修改情况，因此仅仅提取enabled字段
+      // TODO enabled 信息可以考虑保存到数据库中
       config[key] = default_config[key]
       config[key].forEach(sign => {
         let match = stored.filter(s => s.taskCode === sign.taskCode)
         if (match && match.length > 0) {
-          sign.enabled = match[0].enabled
+          let storeSignConfig = match[0]
+          sign.enabled = storeSignConfig.enabled
+          if (sign.subTasks && sign.subTasks.length > 0) {
+            sign.subTasks.forEach(subTask => {
+              match = (storeSignConfig.subTasks || []).filter(v => v.taskCode == subTask.taskCode)
+              if (match && match.length > 0) {
+                subTask.enabled = match[0].enabled
+              }
+            })
+          }
         }
       })
     } else {
@@ -252,7 +270,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.6.1'
+config.code_version = 'v2.0.7'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

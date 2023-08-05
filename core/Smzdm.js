@@ -53,7 +53,7 @@ function SignRunner () {
       FloatyInstance.setFloatyText('查找签到入口')
       let signEntry = widgetUtils.widgetGetById('com.smzdm.client.android:id/v_container_login_not_sign_animation', 3000)
       if (!this.displayButtonAndClick(signEntry, '签到入口')) {
-        signEntry = widgetUtils.widgetGetById('com.smzdm.client.android:id/v_login_sign_background', 3000)
+        signEntry = widgetUtils.widgetGetById('com.smzdm.client.android:id/v_login_sign.*', 3000)
         FloatyInstance.setFloatyText('未找到签到入口，可能已完成签到进行校验')
         logUtils.warnInfo('未找到签到入口，可能已完成签到')
         this.displayButtonAndClick(signEntry)

@@ -11,12 +11,19 @@ let OpenCvUtil = require('../lib/OpenCvUtil.js')
 let formatDate = require('../lib/DateUtil.js')
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
 let storageFactory = singletonRequire('StorageFactory')
+let logFloaty = singletonRequire('LogFloaty')
 
 function BaseSignRunner () {
   this.name = ''
   this.taskCode = ''
   this.subTasks = []
   this.executedSuccess = false
+  this.test = false
+
+  this.setTest = function () {
+    this.test = true
+    return this
+  }
 
   this.setName = function (name) {
     this.name = name
@@ -50,12 +57,10 @@ function BaseSignRunner () {
    */
   this.executeIfNeeded = function () {
     if (checkIsSignExecutedByDb(this.taskCode, this.subTasks)) {
-      FloatyInstance.setFloatyText(this.name + '已经执行过或未到达执行时间，跳过执行')
-      sleep(500)
+      logFloaty.pushLog(this.name + '已经执行过或未到达执行时间，跳过执行')
       return true
     } else {
-      FloatyInstance.setFloatyInfo({ x: config.device_width * 0.4, y: config.device_height / 2 }, '准备执行：' + this.name)
-      sleep(1000)
+      logFloaty.pushLog('准备执行：' + this.name)
       // 自动延期
       runningQueueDispatcher.renewalRunningTask()
       markExecuteStart(this.taskCode)
@@ -93,9 +98,10 @@ function BaseSignRunner () {
       executeDate: date,
     }
     let scheduleList = signTaskService.listTaskScheduleByDate(date, taskCode)
-    let exists = scheduleList.filter(schedule => schedule.executeStatus === 'A' && Math.abs(schedule.executeTime - targetTime) < 5 * 60000)
+    let exists = scheduleList.filter(schedule => schedule.executeStatus === 'A' && schedule.executeTime > targetTime && schedule.executeTime - targetTime < 5 * 60000)
     if (exists && exists.length >= 1) {
       logUtils.warnInfo(['任务[{}]已存在五分钟内的执行计划{}个 跳过创建', taskCode, exists.length])
+      logUtils.debugInfo(['重复任务信息：{}', JSON.stringify(exists)])
       return
     }
     let id = signTaskService.insertTaskSchedule(newSchedule)
@@ -106,10 +112,14 @@ function BaseSignRunner () {
    * 判断今天子任务是否已经执行过
    */
   this.isSubTaskExecuted = function (subTaskInfo, checkOnly) {
+    if (this.test) {
+      return false
+    }
     logUtils.debugInfo(['sub task info: {}', JSON.stringify(subTaskInfo)])
     let subTaskCode = subTaskInfo.taskCode, taskName = subTaskInfo.taskName
     if (!subTaskInfo.enabled) {
       FloatyInstance.setFloatyText(this.name + ':' + taskName + '未启用，跳过执行')
+      signTaskManager.markScheduleDisabled(this.taskCode + ':' + subTaskInfo.taskCode)
       return true
     }
     if (checkIsSignExecutedByDb(this.taskCode + ':' + subTaskCode)) {
@@ -158,10 +168,12 @@ function BaseSignRunner () {
    * @param {string} desc 
    * @param {number} delay 
    */
-  this.displayButtonAndClick = function (button, desc, delay) {
+  this.displayButtonAndClick = function (button, desc, delay, clickByA11y) {
     this.displayButton(button, desc, delay)
     if (button) {
-      if (automator.checkCenterClickable(button)) {
+      if (clickByA11y && button.clickable()) {
+        button.click()
+      } else if (automator.checkCenterClickable(button)) {
         automator.clickCenter(button)
       } else {
         logUtils.errorInfo(['按钮位置不正确无法点击，请检查代码'], true)
@@ -242,7 +254,10 @@ function BaseSignRunner () {
     if (typeof loop === 'undefined') {
       loop = 3
     }
+    FloatyInstance.hide()
+    sleep(40)
     let screen = commonFunctions.captureScreen()
+    FloatyInstance.restore()
     logUtils.debugInfo('准备OCR查找目标：' + content)
     if (screen) {
       let findText = localOcrUtil.recognizeWithBounds(screen, region, regex)
@@ -279,7 +294,10 @@ function BaseSignRunner () {
       logUtils.warnInfo('当前AutoJS不支持OCR')
       return null
     }
+    FloatyInstance.hide()
+    sleep(40)
     let screen = commonFunctions.captureScreen()
+    FloatyInstance.restore()
     logUtils.debugInfo('准备OCR获取文本：' + desc)
     if (screen) {
       let findText = localOcrUtil.recognizeWithBounds(screen, region)
@@ -373,6 +391,10 @@ function BaseSignRunner () {
     return { x: bounds.centerX(), y: bounds.centerY() }
   }
 
+  this.boundsToRegion = function (bounds) {
+    return [bounds.left, bounds.top, bounds.width(), bounds.height()]
+  }
+
   /**
    * abstract funcs
    */
@@ -433,7 +455,7 @@ function BaseSignRunner () {
           executeCost: now.getTime() - schedule.realExecuteTime,
           modifyTime: new Date(),
         }
-        if (forUpdate.executeCost > ~(1<<31)) {
+        if (forUpdate.executeCost > ~(1 << 31)) {
           logUtils.warnInfo(['当前任务起始时间不正确：{}-{}', schedule.id, schedule.taskCode])
           forUpdate.executeCost = now.getTime() - schedule.executeTime
         }
@@ -452,13 +474,13 @@ function BaseSignRunner () {
   function StoreOperator (_this, storeKey, initValue) {
     this.storeKey = storeKey
     _this.initDailyStorage(storeKey, initValue)
-  
+
     this.updateStorageValue = function (update) {
       let value = _this.getDailyStorage(this.storeKey)
       update(value)
       _this.setDailyStorage(this.storeKey, value)
     }
-  
+
     this.getValue = function () {
       return _this.getDailyStorage(this.storeKey)
     }
