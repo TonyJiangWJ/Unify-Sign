@@ -6,6 +6,7 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let logUtils = singletonRequire('LogUtils')
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
 let signFailedUtil = singletonRequire('SignFailedUtil')
+let logFloaty =  singletonRequire('LogFloaty')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
@@ -30,6 +31,14 @@ function SignRunner () {
       this.displayButtonAndClick(confirm, '找到了打开按钮')
     } else {
       FloatyInstance.setFloatyText('没有打开确认弹框')
+    }
+    logFloaty.pushLog('检查是否有关闭按钮')
+    let closeButton = widgetUtils.widgetGetOne('关闭按钮', 3000)
+    if (closeButton) {
+      this.displayButtonAndClick(closeButton, '找到了关闭按钮')
+    } else {
+      logFloaty.pushLog('未找到关闭按钮')
+      FloatyInstance.setFloatyText('没有关闭确认弹框')
     }
   }
 

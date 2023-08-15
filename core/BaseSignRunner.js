@@ -395,6 +395,18 @@ function BaseSignRunner () {
     return [bounds.left, bounds.top, bounds.width(), bounds.height()]
   }
 
+  this.pushLog = function (text) {
+    logFloaty.pushLog(text)
+  }
+
+  this.pushErrorLog = function (text) {
+    logFloaty.pushErrorLog(text)
+  }
+
+  this.pushWarningLog = function (text) {
+    logFloaty.pushWarningLog(text)
+  }
+
   /**
    * abstract funcs
    */
