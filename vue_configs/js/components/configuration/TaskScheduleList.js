@@ -114,7 +114,7 @@ const TaskScheduleList = {
     duplicateSchedule: function (schedule) {
       let newSchedule = {
         taskCode: schedule.taskCode,
-        triggerType: 2,
+        triggerType: '2',
         executeStatus: 'A',
         executeTime: new Date().getTime(),
         executeDate: schedule.executeDate,

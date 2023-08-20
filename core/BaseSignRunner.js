@@ -92,7 +92,7 @@ function BaseSignRunner () {
     let date = formatDate(new Date(), 'yyyy-MM-dd')
     let newSchedule = {
       taskCode: taskCode,
-      triggerType: 2,
+      triggerType: '2',
       executeStatus: 'A',
       executeTime: targetTime,
       executeDate: date,

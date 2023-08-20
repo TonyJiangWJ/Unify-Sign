@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-07-17 09:41:42
+ * @Last Modified time: 2023-08-20 00:28:40
  * @Description: 
  */
 
@@ -23,7 +23,8 @@ function CreditRunner () {
 
   this.collectFamily = false
 
-  this.openCreditPage = function () {
+  this.openCreditPage = function (tryTime) {
+    tryTime = tryTime || 1
     commonFunctions.launchPackage(_package_name)
     sleep(500)
     if (config.is_alipay_locked) {
@@ -42,6 +43,16 @@ function CreditRunner () {
     } else {
       FloatyInstance.setFloatyText('没有打开确认弹框')
     }
+    if (!widgetUtils.widgetWaiting('我的积分')) {
+      if (tryTime >= 5) {
+        warnInfo(['检测到未能进入会员积分界面，已尝试多次，放弃重试'])
+        return false
+      }
+      warnInfo(['检测到未能进入会员积分界面，重新进入'])
+      commonFunctions.minimize()
+      return this.openCreditPage(tryTime++)
+    }
+    return true
   }
 
 
@@ -115,7 +126,10 @@ function CreditRunner () {
     }
 
     // 每日签到完成或未找到签到，进入积分任务页面做浏览任务
-    this.enterCreditsTaskAndCheck()
+    if (this.sign_success || this.enterCreditsTaskList()) {
+      this.doTask()
+      automator.back()
+    }
     commonFunctions.setAliCreditsSigned()
 
     sleep(500)
@@ -132,16 +146,18 @@ function CreditRunner () {
     sleep(500)
   }
 
-  this.enterCreditsTaskAndCheck = function () {
+
+
+  this.enterCreditsTaskList = function () {
     let target = widgetUtils.widgetGetOne('每日签到')
     if (this.displayButtonAndClick(target, '准备执行签到浏览任务')) {
       sleep(1000)
-      this.doTask()
-      automator.back()
+      return true
     } else {
       FloatyInstance.setFloatyText('未能找到每日签到入口')
       sleep(1000)
     }
+    return false
   }
 
   this.doTask = function () {
@@ -170,11 +186,17 @@ function CreditRunner () {
         automator.gestureDown(startY, endY)
         sleep(1000)
       }
-      if (currentPackage() != _package_name) {
-        return this.exec()
-      }
       automator.back()
       sleep(1000)
+
+      let tmp
+      if ((tmp = currentPackage()) != _package_name) {
+        warnInfo(['检测到当前包名{}不正确，重新打开积分签到界面', tmp])
+        this.openCreditPage()
+        if (!this.enterCreditsTaskList()) {
+          errorInfo(['重新进入任务列表失败'])
+        }
+      }
       return this.doTask()
     }
     let browser15 = widgetUtils.widgetGetOne('逛15秒赚3积分')
@@ -189,12 +211,16 @@ function CreditRunner () {
     }
   }
 
-  this.exec = function () {
+  this.doExection = function () {
     FloatyInstance.setFloatyPosition(400, 400)
     FloatyInstance.setFloatyText('准备打开领取积分页面')
     this.openCreditPage()
     FloatyInstance.setFloatyText('准备领取积分')
     this.checkAndCollect()
+  }
+
+  this.exec = function () {
+    this.doExection()
     FloatyInstance.setFloatyText('领取完毕')
     if (this.sign_success || commonFunctions.checkIsAliCreditsSigned()) {
       this.setExecuted()

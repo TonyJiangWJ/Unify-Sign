@@ -6,11 +6,11 @@ let FloatyInstance = singletonRequire('FloatyUtil')
 let logUtils = singletonRequire('LogUtils')
 let localOcrUtil = require('../lib/LocalOcrUtil.js')
 let signFailedUtil = singletonRequire('SignFailedUtil')
-let logFloaty =  singletonRequire('LogFloaty')
+let logFloaty = singletonRequire('LogFloaty')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
-
+  const _this = this
   const _package_name = 'com.taobao.taobao'
   const storageHelper = new SignStorageHelper(this)
   this.initStorages = function () {
@@ -21,6 +21,7 @@ function SignRunner () {
   this.countdownLimitCounter = 0
   this.finishThisLoop = false
   this.browseAdCount = 0
+  this.created_schedule = false
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -56,10 +57,14 @@ function SignRunner () {
         commonFunctions.killCurrentApp()
       }
       // 签到是成功了，但是未主动设置定时任务，估计有问题
-      if (!storageHelper.checkIsCountdownExecuted()) {
-        warnInfo(['今日未创建过定时任务，直接设置五分钟后的执行计划'])
-        this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
-        storageHelper.incrCountdown()
+      if (!this.created_schedule) {
+        if (!storageHelper.checkIsCountdownExecuted()) {
+          warnInfo(['今日未创建过定时任务，直接设置五分钟后的执行计划'])
+          this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
+        } else if (this.has_countdown_widget) {
+          warnInfo(['有倒计时控件，但是未能正确识别倒计时时间，直接设置5分钟后的执行计划'])
+          this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
+        }
       }
     } else {
       logUtils.warnInfo(['未找到签到按钮'])
@@ -120,6 +125,7 @@ function SignRunner () {
     if (this.countdownLimitCounter > 4) {
       logUtils.warnInfo(['可能界面有弹窗导致卡死，直接返回并创建五分钟后的定时启动'])
       this.createNextSchedule(this.taskCode, new Date().getTime() + 300 * 1000)
+      this.created_schedule = true
       this.finishThisLoop = true
       return
     }
@@ -136,40 +142,61 @@ function SignRunner () {
       this.checkCountdownBtn(waitForNext)
     } else {
       FloatyInstance.setFloatyText('查找是否存在 倒计时')
+      this.has_countdown_widget = false
       let countdown = widgetUtils.widgetGetOne('倒计时', null, true, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
       if (countdown) {
-        // FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '剩余时间：' + countdown.content)
-        let screen = commonFunctions.checkCaptureScreenPermission()
-        let content = localOcrUtil.recognize(screen, this.boundsToRegion(countdown.bounds))
-        logUtils.debugInfo(['ocr识别文本信息：{}', content])
-        sleep(1000)
-        let regex = /((\d+(:?)){1,3})/
-        let text = content
-        if (regex.test(text)) {
-          text = regex.exec(text)[1]
-          regex = /(\d+(:?))/g
-          let totalNums = []
-          let find = null
-          while ((find = regex.exec(text)) != null) {
-            totalNums.push(parseInt(find[1]))
-          }
-          let i = 0
-          let totalSeconds = totalNums.reverse().reduce((a, b) => { a += b * Math.pow(60, i++); return a }, 0)
-          FloatyInstance.setFloatyInfo(this.boundsToPosition(countdown.target.bounds()), '计算倒计时' + totalSeconds + '秒')
+        this.has_countdown_widget = true
+        FloatyInstance.setFloatyText(' ')
+        sleep(100)
+        let totalSeconds = ocrChecking(countdown, 1)
+        if (totalSeconds) {
+          let position = this.boundsToPosition(countdown.target.bounds())
+          position.x -= 200
+          FloatyInstance.setFloatyInfo(position, '计算倒计时' + totalSeconds + '秒')
           if (waitForNext) {
             if (totalSeconds < 60) {
               commonFunctions.commonDelay(totalSeconds / 60, '等待元宝')
               this.checkCountdownBtn(true)
             } else {
               this.createNextSchedule(this.taskCode, new Date().getTime() + totalSeconds * 1000)
+              this.created_schedule = true
               storageHelper.incrCountdown(true)
             }
           }
           sleep(1000)
+        } else {
+          logUtils.errorInfo(['OCR识别倒计时数据失败'])
+          signFailedUtil.recordFailedScreen(commonFunctions.checkCaptureScreenPermission(), this.taskCode, '倒计时识别')
         }
       }
     }
 
+  }
+
+  function ocrChecking (countdown, tryTime) {
+    tryTime = tryTime || 1
+    let screen = commonFunctions.checkCaptureScreenPermission()
+    let content = localOcrUtil.recognize(screen, _this.boundsToRegion(countdown.bounds))
+    logUtils.debugInfo(['ocr识别文本信息：{}', content])
+    let regex = /^\D*((\d+:){2}\d+)\D*$/
+    let text = content
+    if (regex.test(text)) {
+      text = regex.exec(text)[1]
+      regex = /(\d+(:?))/g
+      let totalNums = []
+      let find = null
+      while ((find = regex.exec(text)) != null) {
+        totalNums.push(parseInt(find[1]))
+      }
+      let i = 0
+      return totalNums.reverse().reduce((a, b) => { a += b * Math.pow(60, i++); return a }, 0)
+    }
+    if (tryTime <= 3) {
+      sleep(1000)
+      logUtils.warnInfo(['ocr识别失败，尝试再次识别'])
+      return ocrChecking(countdown, tryTime + 1)
+    }
+    return null
   }
 
   this.browseAds = function () {
@@ -179,7 +206,7 @@ function SignRunner () {
     } else {
       let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
       if (moreCoins) {
-        this.checkCountdownBtn() 
+        this.checkCountdownBtn()
         if (this.finishThisLoop) {
           return
         }
@@ -233,7 +260,7 @@ function SignRunner () {
       FloatyInstance.setFloatyText('查找推荐商品')
       let countDown = new java.util.concurrent.CountDownLatch(1)
       let searchIcon = null
-      threads.start(function() {
+      threads.start(function () {
         searchIcon = selector().clickable().className('android.view.View').boundsInside(0, 0, 0.8 * config.device_width, 0.7 * config.device_height).untilFind()
         countDown.countDown()
       })
@@ -337,7 +364,9 @@ function SignStorageHelper (runner) {
 
   this.checkIsCountdownExecuted = function () {
     let executeInfo = this.countdownStore.getValue()
-    if (executeInfo.executed || executeInfo.count >= 3) {
+    logUtils.debugInfo(['当前倒计时执行次数：{}', executeInfo.count])
+    // 假定倒计时设置次数，最少3次
+    if (executeInfo.count >= 3) {
       return true
     }
     return false

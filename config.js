@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-08-09 14:18:32
+ * @Last Modified time: 2023-08-20 00:20:59
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -191,6 +191,12 @@ let default_config = {
       taskCode: 'AlipayMerchant',
       script: 'AlipayMerchantCredits.js',
       enabled: true
+    },
+    {
+      name: '小米商城米金',
+      taskCode: 'XiaomiShop',
+      script: 'XiaomiShop.js',
+      enabled: true
     }
   ].concat(custom_config.supported_signs || [])
 }
@@ -277,7 +283,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.7'
+config.code_version = 'v2.0.8.alpha2'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
