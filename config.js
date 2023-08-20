@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-08-05 18:19:37
+ * @Last Modified time: 2023-08-20 00:20:59
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -13,6 +13,7 @@ let extendSignConfig = require('./signConfig.js')
 let custom_config = files.exists('./extends/CustomConfig.js') ? require('./extends/CustomConfig.js') : { supported_signs: [] }
 custom_config = custom_config || { supported_signs: [] }
 let default_config = {
+  unlock_device_flag: 'normal',
   password: '',
   timeout_unlock: 1000,
   timeout_findOne: 1000,
@@ -37,12 +38,16 @@ let default_config = {
   auto_set_brightness: false,
   // 锁屏启动关闭提示框
   dismiss_dialog_if_locked: true,
+  // 佛系模式
+  buddha_like_mode: false,
   request_capture_permission: true,
   not_lingering_float_window: true,
   capture_permission_button: 'START NOW|立即开始|允许',
   // 是否保存日志文件，如果设置为保存，则日志文件会按时间分片备份在logback/文件夹下
   save_log_file: true,
   async_save_log_file: true,
+  // 日志保留天数
+  log_saved_days: 3,
   back_size: '100',
   // 控制台最大日志长度，仅免费版有用
   console_log_maximum_size: 1500,
@@ -83,6 +88,8 @@ let default_config = {
   // 本地ocr优先级
   local_ocr_priority: 'auto',
   other_accessisibility_services: '',
+  // 不需要执行resolver
+  noneed_resolve_dex: false,
   supported_signs: [
     {
       name: '蚂蚁积分签到',
@@ -184,6 +191,12 @@ let default_config = {
       taskCode: 'AlipayMerchant',
       script: 'AlipayMerchantCredits.js',
       enabled: true
+    },
+    {
+      name: '小米商城米金',
+      taskCode: 'XiaomiShop',
+      script: 'XiaomiShop.js',
+      enabled: true
     }
   ].concat(custom_config.supported_signs || [])
 }
@@ -270,7 +283,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.7'
+config.code_version = 'v2.0.8.alpha2'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

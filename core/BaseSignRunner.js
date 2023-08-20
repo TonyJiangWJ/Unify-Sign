@@ -92,7 +92,7 @@ function BaseSignRunner () {
     let date = formatDate(new Date(), 'yyyy-MM-dd')
     let newSchedule = {
       taskCode: taskCode,
-      triggerType: 2,
+      triggerType: '2',
       executeStatus: 'A',
       executeTime: targetTime,
       executeDate: date,
@@ -393,6 +393,18 @@ function BaseSignRunner () {
 
   this.boundsToRegion = function (bounds) {
     return [bounds.left, bounds.top, bounds.width(), bounds.height()]
+  }
+
+  this.pushLog = function (text) {
+    logFloaty.pushLog(text)
+  }
+
+  this.pushErrorLog = function (text) {
+    logFloaty.pushErrorLog(text)
+  }
+
+  this.pushWarningLog = function (text) {
+    logFloaty.pushWarningLog(text)
   }
 
   /**

@@ -107,6 +107,7 @@ try {
     exit()
   }
 }
+commonFunctions.forceCheckForcegroundPermission()
 logInfo('解锁成功')
 
 // 请求截图权限
