@@ -29,7 +29,10 @@ function SignRunner () {
       // 比较坑爹的 要等好久才会出现控件
       sleep(5000)
       FloatyInstance.setFloatyText('准备查找签到领金币按钮')
-
+      if (this.captureAndCheckByOcr('今日签到', '今日签到', null, null, true)) {
+        sleep(1000)
+        this.captureAndCheckByOcr('.*(明早7点可领|明日签到).*', '校验是否完成签到')
+      }
       let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领|明日签到.*', null, true)
       if (result.value === 1) {
         let signButton = result.target

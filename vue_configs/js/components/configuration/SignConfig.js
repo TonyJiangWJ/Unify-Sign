@@ -173,6 +173,9 @@ const SignConfig = {
     },
     manageGroup: function () {
       this.$router.push('/basic/sign/groupList')
+    },
+    executeTask: function (taskInfo) {
+      $app.invoke('executeTask', { taskInfo: taskInfo })
     }
   },
   watch: {
@@ -217,6 +220,7 @@ const SignConfig = {
           <template #right>
             <div style="display:flex;height: 100%;">
               <van-button square type="primary" text="更多设置" @click="doSetting(supportedSign.taskCode)" v-if="hasSetting(supportedSign.taskCode)" style="height: 100%"/>
+              <van-button square type="warning" text="单次执行" @click="executeTask(supportedSign)" style="height: 100%"/>
             </div>
           </template>
         </van-swipe-cell>

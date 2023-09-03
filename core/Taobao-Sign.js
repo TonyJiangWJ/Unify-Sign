@@ -201,7 +201,7 @@ function SignRunner () {
 
   this.browseAds = function () {
     sleep(1000)
-    if (storageHelper.isHangTaskDone()) {
+    if (storageHelper.isHangTaskDone() || storageHelper.isHangTooMuch()) {
       this.checkCountdownBtn(true)
     } else {
       let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
@@ -229,7 +229,7 @@ function SignRunner () {
         } else {
           logUtils.warnInfo(['未找到去逛逛 可能已经完成了'])
           let searchBtn = widgetUtils.widgetGetOne('去搜索')
-          if (this.displayButtonAndClick(searchBtn, '去搜索')) {
+          if (!this.search_no_more && this.displayButtonAndClick(searchBtn, '去搜索')) {
             this.doSearching()
           } else {
             let finished = widgetUtils.widgetGetOne('已完成')
@@ -257,11 +257,11 @@ function SignRunner () {
 
   this.doSearching = function () {
     if (widgetUtils.idWaiting('com.taobao.taobao:id/dynamic_container')) {
-      FloatyInstance.setFloatyText('查找推荐商品')
+      FloatyInstance.setFloatyText('查找搜索发现')
       let countDown = new java.util.concurrent.CountDownLatch(1)
       let searchIcon = null
       threads.start(function () {
-        searchIcon = selector().clickable().className('android.view.View').boundsInside(0, 0, 0.8 * config.device_width, 0.7 * config.device_height).untilFind()
+        searchIcon = selector().className('android.view.View').boundsInside(0, 0, 0.8 * config.device_width, 0.7 * config.device_height).untilFind()
         countDown.countDown()
       })
       countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
@@ -272,6 +272,9 @@ function SignRunner () {
         sleep(1000)
       } else {
         FloatyInstance.setFloatyText('未找到推荐商品')
+        logUtils.errorInfo(['未找到推荐商品控件，自动搜索失败'])
+        signFailedUtil.recordFailedScreen(commonFunctions.checkCaptureScreenPermission(), this.taskCode, '搜索任务')
+        this.search_no_more = true
       }
       automator.back()
     }
@@ -343,6 +346,14 @@ function SignStorageHelper (runner) {
 
   this.incrHangTask = function () {
     this.hangStore.updateStorageValue(storeValue => storeValue.count += 1)
+  }
+
+  this.isHangTooMuch = function () {
+    this.incrHangTask()
+    if (this.hangStore.getValue().count >= 10) {
+      logUtils.warnInfo(['逛一逛任务执行超过10次，应该是出问题了，直接跳过并设置为已完成'])
+      this.setHangTaskDone()
+    }
   }
 
   this.setHangTaskDone = function () {

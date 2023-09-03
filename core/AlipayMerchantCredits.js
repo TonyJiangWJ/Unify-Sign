@@ -127,8 +127,12 @@ function SignRunner () {
     FloatyInstance.setFloatyText('')
   }
 
-  this.doTask = function () {
-
+  this.doTask = function (tryTime) {
+    tryTime = tryTime || 1
+    if (tryTime >= 10) {
+      logUtils.errorInfo(['执行超过十次，估计死循环了 并没有那么多任务可以执行'])
+      return
+    }
     let startY = config.device_height - config.device_height * 0.15
     let endY = startY - config.device_height * 0.3
     FloatyInstance.setFloatyText('查找去浏览|去完成')
@@ -165,7 +169,7 @@ function SignRunner () {
       }
       automator.back()
       sleep(1000)
-      this.doTask()
+      this.doTask(tryTime + 1)
     }
     FloatyInstance.setFloatyText('没有更多浏览任务了')
   }
