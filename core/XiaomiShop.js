@@ -32,9 +32,10 @@ function SignRunner () {
     // 在这里写签到执行的代码
     // ...
     if (this.openSignPage()) {
-      this.doSign()
-      // 执行成功后触发 标记当前任务已完成 失败了请勿调用
-      this.setExecuted()
+      if (this.doSign()) {
+        // 执行成功后触发 标记当前任务已完成 失败了请勿调用
+        this.setExecuted()
+      }
     }
     commonFunctions.minimize()
   }
@@ -60,7 +61,7 @@ function SignRunner () {
     sleep(1000)
     widgetUtils.widgetWaiting('做任务领米金')
     let dialySign = widgetUtils.widgetGetOne('每日签到')
-    this.displayButtonAndClick(dialySign, '每日签到')
+    let success = this.displayButtonAndClick(dialySign, '每日签到')
     let browseBtn = widgetUtils.widgetGetOne('去浏览')
     while (this.displayButtonAndClick(browseBtn, '去浏览')) {
       FloatyInstance.setFloatyText('等待五秒')
@@ -92,7 +93,7 @@ function SignRunner () {
       rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
       sleep(500)
     }
-    // 去点赞
+    return success
   }
 
   let _this = this

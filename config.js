@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-08-20 00:20:59
+ * @Last Modified time: 2023-09-03 16:39:54
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -25,6 +25,7 @@ let default_config = {
   show_engine_id: false,
   develop_mode: false,
   develop_saving_mode: false,
+  save_yolo_train_data: false,
   enable_visual_helper: false,
   check_device_posture: false,
   check_distance: false,
@@ -283,7 +284,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.8.alpha2'
+config.code_version = 'v2.0.8'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
