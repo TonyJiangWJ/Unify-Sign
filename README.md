@@ -14,6 +14,7 @@
   - ~~柚番短视频 自动刷泡泡~~  
 - 部分APP会检测无障碍，且部分签到使用到了内置OCR功能，因此需要安装 [特殊版本的AutoJS](https://github.com/TonyJiangWJ/Ant-Forest/releases/download/v1.1.1.4/AutoJS.fake.latest.apk)，并关闭原版AutoJS的无障碍权限；
 - 因为AutoJSPro的存在无障碍限制，且Pro最新政策会进行代码审查，因此不会受支持，请勿使用Pro；
+- 上面链接中的版本不一定最新的，可以去蓝奏云下载困鱼：https://wwxs.lanzouq.com/b042le51i 密码:b034
 
 ## 使用
 
