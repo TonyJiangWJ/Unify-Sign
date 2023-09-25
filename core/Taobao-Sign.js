@@ -59,10 +59,10 @@ function SignRunner () {
       // 签到是成功了，但是未主动设置定时任务，估计有问题
       if (!this.created_schedule) {
         if (!storageHelper.checkIsCountdownExecuted()) {
-          warnInfo(['今日未创建过定时任务，直接设置五分钟后的执行计划'])
+          logUtils.warnInfo(['今日未创建过定时任务，直接设置五分钟后的执行计划'])
           this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
         } else if (this.has_countdown_widget) {
-          warnInfo(['有倒计时控件，但是未能正确识别倒计时时间，直接设置5分钟后的执行计划'])
+          logUtils.warnInfo(['有倒计时控件，但是未能正确识别倒计时时间，直接设置5分钟后的执行计划'])
           this.createNextSchedule(this.taskCode, new Date().getTime() + 300000)
         }
       }
@@ -117,8 +117,33 @@ function SignRunner () {
         }
       }
     } else {
-      warnInfo(['获取截图失败或不支持OCR 暂未实现 相应签到逻辑'])
+      logUtils.warnInfo(['获取截图失败或不支持OCR 暂未实现 相应签到逻辑'])
     }
+  }
+
+  /**
+   * 
+   * @param {string} targetText 目标文本
+   * @param {Array} b 目标区域，bounds信息，left,top,right,bottom
+   * @returns 
+   */
+  function findByWidgetOrOcr (targetText, b) {
+    let region = null
+    if (b && b.length == 4) {
+      region = [b[0], b[1], b[2] - b[0], b[3] - b[1]]
+    }
+    let find = widgetUtils.widgetGetOne(targetText, 3000, null, null, (() => { if (b) { return m => m.boundsInside(b[0], b[1], b[2], b[3]) } else { return null } })())
+    if (find) {
+      return find
+    }
+    let screen = commonFunctions.captureScreen()
+    if (screen && localOcrUtil.enabled) {
+      find = localOcrUtil.recognizeWithBounds(screen, region, targetText)
+      if (find && find.length > 0) {
+        return { bounds: () => find[0].bounds, target: find[0], content: find[0].label }
+      }
+    }
+    return null
   }
 
   this.checkCountdownBtn = function (waitForNext) {
@@ -130,7 +155,7 @@ function SignRunner () {
       return
     }
     FloatyInstance.setFloatyText('查找是否存在 点击领取')
-    let awardCountdown = widgetUtils.widgetGetOne('点击领取', null, null, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
+    let awardCountdown = findByWidgetOrOcr('点击.*取', [config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6])
     if (awardCountdown) {
       this.displayButton(awardCountdown, '可以领')
       automator.clickCenter(awardCountdown)
@@ -144,44 +169,46 @@ function SignRunner () {
       FloatyInstance.setFloatyText('查找是否存在 倒计时')
       this.has_countdown_widget = false
       let countdown = widgetUtils.widgetGetOne('倒计时', null, true, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
+      let totalSeconds = null
       if (countdown) {
         this.has_countdown_widget = true
         FloatyInstance.setFloatyText(' ')
         sleep(100)
-        let totalSeconds = ocrChecking(countdown, 1)
-        if (totalSeconds) {
-          let position = this.boundsToPosition(countdown.target.bounds())
-          position.x -= 200
-          FloatyInstance.setFloatyInfo(position, '计算倒计时' + totalSeconds + '秒')
-          if (waitForNext) {
-            if (totalSeconds < 60) {
-              commonFunctions.commonDelay(totalSeconds / 60, '等待元宝')
-              this.checkCountdownBtn(true)
-            } else {
-              this.createNextSchedule(this.taskCode, new Date().getTime() + totalSeconds * 1000)
-              this.created_schedule = true
-              storageHelper.incrCountdown(true)
-            }
+        totalSeconds = ocrChecking(this.boundsToRegion(countdown.bounds), 1)
+      } else {
+        totalSeconds = ocrChecking([config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4], 1)
+      }
+      if (totalSeconds) {
+        let position = this.boundsToPosition(countdown.target.bounds())
+        position.x -= 200
+        FloatyInstance.setFloatyInfo(position, '计算倒计时' + totalSeconds + '秒')
+        if (waitForNext) {
+          if (totalSeconds < 60) {
+            commonFunctions.commonDelay(totalSeconds / 60, '等待元宝')
+            this.checkCountdownBtn(true)
+          } else {
+            this.createNextSchedule(this.taskCode, new Date().getTime() + totalSeconds * 1000)
+            this.created_schedule = true
+            storageHelper.incrCountdown(true)
           }
-          sleep(1000)
-        } else {
-          logUtils.errorInfo(['OCR识别倒计时数据失败'])
-          signFailedUtil.recordFailedScreen(commonFunctions.checkCaptureScreenPermission(), this.taskCode, '倒计时识别')
         }
+        sleep(1000)
+      } else {
+        logUtils.errorInfo(['OCR识别倒计时数据失败'])
+        signFailedUtil.recordFailedScreen(commonFunctions.checkCaptureScreenPermission(), this.taskCode, '倒计时识别')
       }
     }
-
   }
 
-  function ocrChecking (countdown, tryTime) {
+
+  function ocrChecking (countdownRegion, tryTime) {
     tryTime = tryTime || 1
     let screen = commonFunctions.checkCaptureScreenPermission()
-    let content = localOcrUtil.recognize(screen, _this.boundsToRegion(countdown.bounds))
-    logUtils.debugInfo(['ocr识别文本信息：{}', content])
+    let contents = localOcrUtil.recognizeWithBounds(screen, countdownRegion, /^\D*((\d+:){2}\d+)\D*$/)
+    logUtils.debugInfo(['ocr识别文本信息：{}', JSON.stringify(contents)])
     let regex = /^\D*((\d+:){2}\d+)\D*$/
-    let text = content
-    if (regex.test(text)) {
-      text = regex.exec(text)[1]
+    if (contents && contents.length > 0 && regex.test(contents[0].label)) {
+      let text = regex.exec(contents[0].label)[1]
       regex = /(\d+(:?))/g
       let totalNums = []
       let find = null
@@ -194,7 +221,7 @@ function SignRunner () {
     if (tryTime <= 3) {
       sleep(1000)
       logUtils.warnInfo(['ocr识别失败，尝试再次识别'])
-      return ocrChecking(countdown, tryTime + 1)
+      return ocrChecking(countdownRegion, tryTime + 1)
     }
     return null
   }

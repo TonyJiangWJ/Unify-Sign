@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-08-20 00:28:40
+ * @Last Modified time: 2023-09-10 09:28:46
  * @Description: 
  */
 
@@ -43,7 +43,7 @@ function CreditRunner () {
     } else {
       FloatyInstance.setFloatyText('没有打开确认弹框')
     }
-    if (!widgetUtils.widgetWaiting('我的积分')) {
+    if (!widgetUtils.widgetWaiting('(我的(积分|等级特权))|每日签到')) {
       if (tryTime >= 5) {
         warnInfo(['检测到未能进入会员积分界面，已尝试多次，放弃重试'])
         return false
@@ -169,10 +169,17 @@ function CreditRunner () {
     let toFinishList = widgetUtils.widgetGetAll('去完成')
     let toFinishBtn = toFinishList.filter(v => {
       let title = v.parent().child(1).text()
+      if (title && title.indexOf('视频') > -1) {
+        return false
+      }
       return title && title.indexOf('15秒') > -1
     })
     if (toFinishBtn && toFinishBtn.length > 0) {
       toFinishBtn = toFinishBtn[0]
+      let title = toFinishBtn.parent().child(1).text()
+      if (title) {
+        debugInfo(['执行任务：{}', title])
+      }
     } else {
       FloatyInstance.setFloatyText('非浏览任务，请手动执行')
       sleep(1000)

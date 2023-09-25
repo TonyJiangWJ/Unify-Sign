@@ -79,6 +79,26 @@ function SignRunner () {
     return false
   }
 
+  this.checkDailySign = function () {
+    let region = [config.device_width / 2, config.device_height * 0.3, config.device_width / 2, config.device_height * 0.3]
+    let targetContainer = widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
+    if (targetContainer) {
+      sleep(1000)
+      widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
+      let containerBounds = targetContainer.bounds()
+      logUtils.debugInfo(['根据控件信息获取ocr识别区域'])
+      region = [containerBounds.centerX(), containerBounds.top - 20, containerBounds.width() / 2, containerBounds.height()]
+    }
+    logUtils.debugInfo(['ocr识别区域：{}', JSON.stringify(region)])
+    WarningFloaty.addRectangle('识别区域', region)
+    sleep(1000)
+    if (this.captureAndCheckByOcr('^领取$', '领取按钮', region, null, true, 3)) {
+      this.setExecuted()
+    } else {
+      FloatyInstance.setFloatyText('未找到领取按钮')
+    }
+  }
+
   /**
    * 执行签到
    */
@@ -90,30 +110,14 @@ function SignRunner () {
       logUtils.debugInfo(['点击位置：{}', JSON.stringify(clickPoint)])
       automator.click(clickPoint.x, clickPoint.y)
       sleep(1000)
-      let region = [config.device_width / 2, config.device_height * 0.3, config.device_width / 2, config.device_height * 0.3]
-      let targetContainer = widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
-      if (targetContainer) {
-        sleep(1000)
-        widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
-        let containerBounds = targetContainer.bounds()
-        logUtils.debugInfo(['根据控件信息获取ocr识别区域'])
-        region = [containerBounds.centerX(), containerBounds.top - 20, containerBounds.width() / 2, containerBounds.height()]
-      }
-      logUtils.debugInfo(['ocr识别区域：{}', JSON.stringify(region)])
-      WarningFloaty.addRectangle('识别区域', region)
-      sleep(1000)
-      if (this.captureAndCheckByOcr('^领取$', '领取按钮', region, null, true, 3)) {
-        this.setExecuted()
-      } else {
-        FloatyInstance.setFloatyText('未找到领取按钮')
-      }
+      this.checkDailySign()
       WarningFloaty.clearAll()
       this.doTask()
     } else {
       FloatyInstance.setFloatyText('未找到签到入口，可能今天已经完成签到')
       this.findEntranceAndDoTask()
       // TODO 校验是否真实的完成了签到
-      this.setExecuted()
+      // this.setExecuted()
     }
     sleep(500)
   }
@@ -121,6 +125,7 @@ function SignRunner () {
   this.findEntranceAndDoTask = function () {
     FloatyInstance.setFloatyText('查找 领更多积分 入口')
     if (this.captureAndCheckByOcr('^领更多积分$', '任务入口', null, null, true, 3)) {
+      this.checkDailySign()
       sleep(1000)
       this.doTask()
     }
