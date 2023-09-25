@@ -12,12 +12,13 @@
   - 芭芭农场签到
   - 手机淘宝现金签到
   - ~~柚番短视频 自动刷泡泡~~  
-- 部分APP会检测无障碍，且部分签到使用到了内置OCR功能，因此需要安装 [特殊版本的AutoJS](https://github.com/TonyJiangWJ/Ant-Forest/releases/download/v1.1.1.4/AutoJS.modify.latest.apk)，并关闭原版AutoJS的无障碍权限；
+- 部分APP会检测无障碍，且部分签到使用到了内置OCR功能，因此需要安装 [特殊版本的AutoJS](https://github.com/TonyJiangWJ/Ant-Forest/releases/download/v1.1.1.4/AutoJS.fake.latest.apk)，并关闭原版AutoJS的无障碍权限；
 - 因为AutoJSPro的存在无障碍限制，且Pro最新政策会进行代码审查，因此不会受支持，请勿使用Pro；
+- 上面链接中的版本不一定最新的，可以去蓝奏云下载困鱼：https://wwxs.lanzouq.com/b042le51i 密码:b034
 
 ## 使用
 
-- 安装[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Ant-Forest/releases/download/v1.1.1.4/AutoJS.modify.latest.apk)之后把整个脚本项目放进 **"/sdcard/脚本/"** 文件夹下面。打开软件后下拉刷新，然后运行项目或者 `main.js` 即可。
+- 安装[特殊版本的AutoJS](https://github.com/TonyJiangWJ/Ant-Forest/releases/download/v1.1.1.4/AutoJS.fake.latest.apk)之后把整个脚本项目放进 **"/sdcard/脚本/"** 文件夹下面。打开软件后下拉刷新，然后运行项目或者 `main.js` 即可。
 - 因为部分应用会检测集中某个时间点的签到，检测为异常行为。因此脚本实现的逻辑为每天第一次运行时创建随机的执行计划。所以需要对 `main.js` 设置每天0点的定时任务，用以创建当天的执行计划。
 - 运行 `可视化配置.js` 进入 `签到设置`，勾选需要运行的签到任务。对于任务的执行时间设置，选中任务项右划调出按钮 `设置执行时间` 点击进入设置界面，每个任务可以单独设置执行时间或者直接按分组执行，分组需要在 `管理执行分组` 中增加和配置
 - 对于需要配置图像的任务，在任务项左滑调出 `更多设置` 进入设置页面配置相应的内容，否则无法正常执行，例如 `叮咚签到` 需要配置各个图像节点
