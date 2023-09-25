@@ -21,6 +21,20 @@ function MainExecutor () {
           debugInfo(['任务已禁用 标记为已禁用 {}', target.name])
           signTaskManager.markScheduleDisabled(target.taskCode)
           return
+        } else if (target.subTasks && target.subTasks.length > 0) {
+          let hasEnabledSubTask = false
+          target.subTasks.forEach(subTask => {
+            if (subTask.enabled == false || subTask.enabled == 'false') {
+              debugInfo(['任务已禁用 标记为已禁用 {}', target.name])
+              signTaskManager.markScheduleDisabled(target.taskCode + ':' + subTask.taskCode)
+              return
+            }
+            hasEnabledSubTask = true
+          })
+          if (!hasEnabledSubTask) {
+            debugInfo(['所有子任务均已禁用，跳过执行'])
+            return
+          }
         }
         try {
           if (!require('./' + target.script).setName(target.name).setTaskCode(target.taskCode).setSubTasks(target.subTasks).executeIfNeeded()) {
