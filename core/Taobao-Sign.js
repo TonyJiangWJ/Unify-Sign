@@ -179,8 +179,10 @@ function SignRunner () {
         totalSeconds = ocrChecking([config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4], 1)
       }
       if (totalSeconds) {
-        let position = this.boundsToPosition(countdown.target.bounds())
-        position.x -= 200
+        let position = countdown ? this.boundsToPosition(countdown.target.bounds()) : null
+        if (position) {
+          position.x -= 200
+        }
         FloatyInstance.setFloatyInfo(position, '计算倒计时' + totalSeconds + '秒')
         if (waitForNext) {
           if (totalSeconds < 60) {
