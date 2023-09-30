@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-09-25 22:34:05
+ * @Last Modified time: 2023-10-01 00:05:38
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -114,6 +114,11 @@ let default_config = {
           taskCode: 'beanSign',
           taskName: '签到',
           enabled: true,
+        },
+        {
+          taskCode: 'doubleSign',
+          taskName: '双签领豆',
+          enabled: false,
         },
         {
           taskCode: 'plantBean',
@@ -284,7 +289,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.9'
+config.code_version = 'v2.0.9.1'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

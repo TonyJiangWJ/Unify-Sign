@@ -5,14 +5,15 @@ const JingDongConfig = {
   data () {
     return {
       configs: {
-        home_entry: '领京豆',
-        mine: '我的',
-        mine_entry: '京豆',
-        sign_button: '.*(签到领|已签到|已连签|明天签到).*',
-        already_signed: '(已签到|已连签|明天签到).*',
+        // 签到领豆按钮
+        sign_posi_x: 600,
+        sign_posi_y: 625,
+        // 双签按钮
+        double_sign_posi_x: 1230,
+        double_sign_posi_y: 620,
         // 种豆得豆入口
-        plant_bean_enter_x: 1000,
-        plant_bean_enter_y: 1300,
+        plant_bean_enter_x: 1230,
+        plant_bean_enter_y: 440,
         plant_min_gaps: 120
       },
       signName: '京豆签到',
@@ -35,14 +36,15 @@ const JingDongConfig = {
   },
   template: `
   <div>
-    <van-divider content-position="left">\
-      京东京豆签到控件配置\
-    </van-divider>\
-    <van-field v-model="configs.home_entry" label="APP首页领京豆入口" label-width="10em" type="text" placeholder="请输入京豆入口文本" input-align="right" />
-    <van-field v-model="configs.mine" label="‘我的’按钮" label-width="10em" type="text" placeholder="请输入‘我的’文本" input-align="right" />
-    <van-field v-model="configs.mine_entry" label="‘我的’界面‘京豆’按钮" label-width="10em" type="text" placeholder="请输入‘我的’界面‘京豆’按钮文本" input-align="right" />
-    <van-field v-model="configs.sign_button" label="签到界面领京豆按钮文本" label-width="12em" type="text" placeholder="请输入签到界面领京豆按钮文本" input-align="right" />
-    <van-field v-model="configs.already_signed" label="校验已签到的正则" label-width="12em" type="text" placeholder="请输入校验用正则" input-align="right" />
+    <van-divider content-position="left">
+      京东京豆签到控件配置
+    </van-divider>
+    <tip-block>签到领豆使用OCR识别，请开启PaddleOCR，mlkit不稳定，找不到后使用配置的坐标位置</tip-block>
+    <number-field v-model="configs.sign_posi_x" label="签到领豆x坐标" label-width="12em" placeholder="请输入入口横坐标位置" />
+    <number-field v-model="configs.sign_posi_y" label="签到领豆y坐标" label-width="12em" placeholder="请输入入口纵坐标位置" />
+    <tip-block>种豆和双签入口默认使用控件查找，找不到后使用配置的坐标位置</tip-block>
+    <number-field v-model="configs.double_sign_posi_x" label="双签领豆x坐标" label-width="12em" placeholder="请输入入口横坐标位置" />
+    <number-field v-model="configs.double_sign_posi_y" label="双签领豆y坐标" label-width="12em" placeholder="请输入入口纵坐标位置" />
     <number-field v-model="configs.plant_bean_enter_x" label="种豆得豆入口X" label-width="12em" placeholder="请输入入口横坐标位置" />
     <number-field v-model="configs.plant_bean_enter_y" label="种豆得豆入口X" label-width="12em" placeholder="请输入入口纵坐标位置" />
     <tip-block>计算种豆得豆倒计时，超过此时间后设置最小间隔时间的倒计时避免被别人收走</tip-block>

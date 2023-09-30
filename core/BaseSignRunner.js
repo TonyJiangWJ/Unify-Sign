@@ -48,6 +48,10 @@ function BaseSignRunner () {
     return storageFactory.getValueByKey(key)
   }
 
+  this.getFullTimeStorage = function (key) {
+    return storageFactory.getValueByKey(key, true)
+  }
+
   this.setDailyStorage = function (key, value) {
     return storageFactory.updateValueByKey(key, value)
   }
@@ -192,6 +196,9 @@ function BaseSignRunner () {
    */
   this.displayButton = function (button, desc, delay) {
     if (button) {
+      if (!desc) {
+        desc = button.desc() || button.text()
+      }
       FloatyInstance.setFloatyInfo(
         {
           x: button.bounds().centerX(),
@@ -476,25 +483,35 @@ function BaseSignRunner () {
 
   }
 
-  this.createStoreOperator = function (storeKey, initValue) {
-    return new StoreOperator(this, storeKey, initValue)
+  this.createStoreOperator = function (storeKey, initValue, fullTime) {
+    return new StoreOperator(this, storeKey, initValue, fullTime)
   }
 
   // 初始化存储
   this.initStorages()
 
-  function StoreOperator (_this, storeKey, initValue) {
+  function StoreOperator (_this, storeKey, initValue, fullTime) {
     this.storeKey = storeKey
+    this.isFullTimeStorage = fullTime || false
     _this.initDailyStorage(storeKey, initValue)
 
     this.updateStorageValue = function (update) {
-      let value = _this.getDailyStorage(this.storeKey)
+      let value
+      if (this.isFullTimeStorage) {
+        value = _this.getFullTimeStorage(this.storeKey)
+      } else {
+        value = _this.getDailyStorage(this.storeKey)
+      }
       update(value)
       _this.setDailyStorage(this.storeKey, value)
     }
 
     this.getValue = function () {
-      return _this.getDailyStorage(this.storeKey)
+      if (this.isFullTimeStorage) {
+        return _this.getFullTimeStorage(this.storeKey)
+      } else {
+        return _this.getDailyStorage(this.storeKey)
+      }
     }
   }
 
