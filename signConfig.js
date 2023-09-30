@@ -29,14 +29,16 @@ module.exports = function (default_config, config, CONFIG_STORAGE_NAME) {
 
   // 京东签到
   binder.bindCustomSignConfig('jingdong', {
-    home_entry: '领京豆',
-    mine: '我的',
-    mine_entry: '京豆',
-    sign_button: '.*(签到领|已签到|已连签|明天签到).*',
-    already_signed: '(已签到|已连签|明天签到).*',
+    // 签到领豆按钮
+    sign_posi_x: 600,
+    sign_posi_y: 625,
+    // 双签按钮
+    double_sign_posi_x: 1230,
+    double_sign_posi_y: 620,
     // 种豆得豆入口
-    plant_bean_enter_x: 1000,
-    plant_bean_enter_y: 1300,
+    plant_bean_enter_x: 1230,
+    plant_bean_enter_y: 440,
+    plant_min_gaps: 120
   }, [])
 
   // 执行扩展配置

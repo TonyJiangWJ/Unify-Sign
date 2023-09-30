@@ -166,7 +166,7 @@ function SignRunner () {
       this.countdownLimitCounter++
       this.checkCountdownBtn(waitForNext)
     } else {
-      FloatyInstance.setFloatyText('查找是否存在 倒计时')
+      FloatyInstance.setFloatyInfo({ x: config.device_width / 2, y: config.device_height / 2 }, '查找是否存在 倒计时')
       this.has_countdown_widget = false
       let countdown = widgetUtils.widgetGetOne('倒计时', null, true, null, m => m.boundsInside(config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6))
       let totalSeconds = null
@@ -174,9 +174,10 @@ function SignRunner () {
         this.has_countdown_widget = true
         FloatyInstance.setFloatyText(' ')
         sleep(100)
+        storageHelper.saveCountdownRegion(this.boundsToRegion(countdown.bounds))
         totalSeconds = ocrChecking(this.boundsToRegion(countdown.bounds), 1)
       } else {
-        totalSeconds = ocrChecking([config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4], 1)
+        totalSeconds = ocrChecking(storageHelper.getCountdownRegion() || [config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4], 1)
       }
       if (totalSeconds) {
         let position = countdown ? this.boundsToPosition(countdown.target.bounds()) : null
@@ -196,6 +197,10 @@ function SignRunner () {
         }
         sleep(1000)
       } else {
+        if (checkEnded(storageHelper.getCountdownRegion() || [config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4])) {
+          this.pushLog('今日倒计时领取已结束，明日再来')
+          return
+        }
         logUtils.errorInfo(['OCR识别倒计时数据失败'])
         signFailedUtil.recordFailedScreen(commonFunctions.checkCaptureScreenPermission(), this.taskCode, '倒计时识别')
       }
@@ -226,6 +231,16 @@ function SignRunner () {
       return ocrChecking(countdownRegion, tryTime + 1)
     }
     return null
+  }
+
+  function checkEnded (countdownRegion) {
+    let screen = commonFunctions.checkCaptureScreenPermission()
+    let contents = localOcrUtil.recognizeWithBounds(screen, countdownRegion, /明日再来/)
+    logUtils.debugInfo(['ocr识别文本信息：{}', JSON.stringify(contents)])
+    if (contents && contents.length > 0) {
+      return true
+    }
+    return false
   }
 
   this.browseAds = function () {
@@ -362,11 +377,14 @@ module.exports = new SignRunner()
 function SignStorageHelper (runner) {
   const HANG_WORK_DONE = "TB_HANG_WORK_DONE"
   const COUNTDOWN_CHECKING = "TB_COUNTDOWN_CHECKING"
+  const COUNTDOWN_REGION = "TB_COUNTDOWN_REGION"
   this.initStorages = function () {
     // 逛一逛任务是否完成
     this.hangStore = runner.createStoreOperator(HANG_WORK_DONE, { executed: false, count: 0 })
     // 是否执行过倒计时
     this.countdownStore = runner.createStoreOperator(COUNTDOWN_CHECKING, { executed: false, count: 0 })
+    // 存储倒计时识别区域
+    this.countdownRegionStore = runner.createStoreOperator(COUNTDOWN_REGION, {}, true)
   }
 
   this.isHangTaskDone = function () {
@@ -410,6 +428,15 @@ function SignStorageHelper (runner) {
       return true
     }
     return false
+  }
+
+  this.getCountdownRegion = function () {
+    return this.countdownRegionStore.getValue().region
+  }
+
+  this.saveCountdownRegion = function (region) {
+    logUtils.debugInfo(['存储倒计时区域：{}', JSON.stringify(region)])
+    this.countdownRegionStore.updateStorageValue(storageValue => storageValue.region = region)
   }
 
 }
