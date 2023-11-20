@@ -198,6 +198,7 @@ function SignRunner () {
         sleep(1000)
       } else {
         if (checkEnded(storageHelper.getCountdownRegion() || [config.device_width / 2, config.device_height * 0.2, config.device_width / 2, config.device_height * 0.4])) {
+          this.created_schedule = true
           this.pushLog('今日倒计时领取已结束，明日再来')
           return
         }

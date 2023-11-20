@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-07-18 09:48:09
+ * @Last Modified time: 2023-11-04 16:50:35
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -10,24 +10,25 @@ const resolver = require('./lib/AutoJSRemoveDexResolver.js')
 let singletonRequire = require('./lib/SingletonRequirer.js')(runtime, this)
 let runningQueueDispatcher = singletonRequire('RunningQueueDispatcher')
 let { logInfo, errorInfo, warnInfo, debugInfo, infoLog, debugForDev, flushAllLogs } = singletonRequire('LogUtils')
+// 不管其他脚本是否在运行 清除任务队列 适合只使用蚂蚁森林的用户
+if (config.single_script) {
+  logInfo('======单脚本运行直接清空任务队列=======')
+  runningQueueDispatcher.clearAll()
+}
 let FloatyInstance = singletonRequire('FloatyUtil')
 let commonFunctions = singletonRequire('CommonFunction')
 let automator = singletonRequire('Automator')
 config.not_lingering_float_window = true
 commonFunctions.delayIfBatteryLow()
+logInfo('======加入任务队列，并关闭重复运行的脚本=======')
+runningQueueDispatcher.addRunningTask()
 let callStateListener = !config.is_pro && config.enable_call_state_control ? singletonRequire('CallStateListener') : { exitIfNotIdle: () => { } }
 // 用于代理图片资源，请勿移除 否则需要手动添加recycle代码
 let resourceMonitor = require('./lib/ResourceMonitor.js')(runtime, this)
 let unlocker = require('./lib/Unlock.js')
 let mainExecutor = require('./core/MainExecutor.js')
 callStateListener.exitIfNotIdle()
-// 不管其他脚本是否在运行 清除任务队列 适合只使用蚂蚁森林的用户
-if (config.single_script) {
-  logInfo('======单脚本运行直接清空任务队列=======')
-  runningQueueDispatcher.clearAll()
-}
-logInfo('======加入任务队列，并关闭重复运行的脚本=======')
-runningQueueDispatcher.addRunningTask()
+
 commonFunctions.killDuplicateScript()
 logInfo('======初始化SQLite=======')
 let signTaskService = singletonRequire('SignTaskService')

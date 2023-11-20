@@ -114,7 +114,7 @@ function BeanCollector () {
     }
     FloatyInstance.setFloatyText('检查是否有签到按钮或已完成签到')
     this.pushLog('校验是否有签到按钮或已完成签到')
-    let checking = widgetUtils.alternativeWidget('.*签到\\D+', '连签\\d+天', null, true)
+    let checking = widgetUtils.alternativeWidget('.*签到\\D+', '.*连签\\d+天', null, true)
     let clicked = false
     if (checking.value == 1) {
       this.displayButtonAndClick(checking.target, '点击签到')
@@ -137,7 +137,7 @@ function BeanCollector () {
     }
     if (clicked) {
       // 二次校验是否正确签到
-      checking = widgetUtils.widgetCheck('连签\\d+天', 1000)
+      checking = widgetUtils.widgetCheck('.*连签\\d+天', 1000)
       if (checking) {
         this.setSubTaskExecuted(SIGN)
         this.pushLog('二次校验，签到完成')
