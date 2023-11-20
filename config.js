@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-10-01 00:05:38
+ * @Last Modified time: 2023-11-20 22:44:06
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -289,7 +289,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.9.1'
+config.code_version = 'v2.0.9.2'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
