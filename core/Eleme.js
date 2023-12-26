@@ -144,7 +144,7 @@ function SignRunner () {
     commonFunctions.launchPackage(_package_name)
     sleep(500)
     FloatyInstance.setFloatyText('校验是否有打开确认弹框')
-    let confirm = widgetUtils.widgetGetOne(/^打开$/, 3000)
+    let confirm = widgetUtils.widgetGetOne(/^打开|允许$/, 3000)
     if (confirm) {
       this.displayButtonAndClick(confirm, '找到了打开按钮')
     } else {

@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-09-10 09:28:46
+ * @Last Modified time: 2023-12-06 18:27:59
  * @Description: 
  */
 
@@ -167,6 +167,10 @@ function CreditRunner () {
     FloatyInstance.setFloatyText('查找任务')
     sleep(1000)
     let toFinishList = widgetUtils.widgetGetAll('去完成')
+    if (!toFinishList || toFinishList.length <= 0) {
+      logUtils.warnInfo(['无可完成任务'])
+      return
+    }
     let toFinishBtn = toFinishList.filter(v => {
       let title = v.parent().child(1).text()
       if (title && title.indexOf('视频') > -1) {
