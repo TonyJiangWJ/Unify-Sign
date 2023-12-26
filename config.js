@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-11-20 22:44:06
+ * @Last Modified time: 2023-12-10 00:16:26
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -15,6 +15,7 @@ custom_config = custom_config || { supported_signs: [] }
 let default_config = {
   unlock_device_flag: 'normal',
   password: '',
+  infinite_retry_unlock: false,
   timeout_unlock: 1000,
   timeout_findOne: 1000,
   timeout_existing: 8000,
@@ -289,7 +290,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.0.9.2'
+config.code_version = 'v2.0.9.3'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {
