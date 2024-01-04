@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-12-06 18:27:59
+ * @Last Modified time: 2024-01-02 21:18:18
  * @Description: 
  */
 
@@ -15,6 +15,7 @@ let logUtils = singletonRequire('LogUtils')
 let automator = singletonRequire('Automator')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let BaseSignRunner = require('./BaseSignRunner.js')
+let signFailedUtil = singletonRequire('SignFailedUtil')
 
 function CreditRunner () {
   BaseSignRunner.call(this)
@@ -106,44 +107,32 @@ function CreditRunner () {
   }
 
   this.checkAndCollect = function () {
-    FloatyInstance.setFloatyTextColor('#00ff00')
-    FloatyInstance.setFloatyText('等待会员积分控件')
     sleep(1000)
-    let target = widgetUtils.widgetGetOne(/^\s*今日签到.*(\d+)$/)
-    if (target) {
-      this.displayButtonAndClick(target, '等待会员积分控件成功，准备进入签到页面')
-      target = widgetUtils.widgetGetOne('.*已连续签到.*')
-      if (target) {
-        this.sign_success = true
-        commonFunctions.setAliCreditsSigned()
-        this.displayButtonAndClick(target, '进入签到页面成功')
-        automator.back()
-      }
-    } else {
-      FloatyInstance.setFloatyTextColor('#ff0000')
-      FloatyInstance.setFloatyText('未找到待领取积分')
-      logUtils.logInfo(['未找到待领取积分'], true)
-    }
-
-    // 每日签到完成或未找到签到，进入积分任务页面做浏览任务
-    if (this.sign_success || this.enterCreditsTaskList()) {
-      this.doTask()
-      automator.back()
-    }
-    commonFunctions.setAliCreditsSigned()
-
-    sleep(500)
     FloatyInstance.setFloatyTextColor('#00ff00')
     FloatyInstance.setFloatyText('检测是否有今日支付积分')
+    auto.clearCache && auto.clearCache()
     // 今日支付积分
-    target = widgetUtils.widgetGetOne('全部领取')
+    target = widgetUtils.widgetGetOne('.*全部领取.*')
     if (target) {
       this.displayButtonAndClick(target, '找到了支付积分，准备收取')
     } else {
-      FloatyInstance.setFloatyTextColor('#ff0000')
-      FloatyInstance.setFloatyText('未找到今日支付积分')
+      if (!this.captureAndCheckByOcr('全部领取', '全部领取', null, null, true, 3)) {
+        FloatyInstance.setFloatyTextColor('#ff0000')
+        FloatyInstance.setFloatyText('未找到今日支付积分')
+        signFailedUtil.recordFailedWidgets(this.taskCode, '支付积分')
+        sleep(1000)
+      }
     }
     sleep(500)
+    FloatyInstance.setFloatyTextColor('#00ff00')
+    FloatyInstance.setFloatyText('准备执行每日签到')
+    // 直接进入积分签到
+    openSignPage()
+    this.doTask()
+    // 十五秒广告
+    this.doBrowseTask()
+    automator.back()
+    commonFunctions.setAliCreditsSigned()
   }
 
 
@@ -166,13 +155,14 @@ function CreditRunner () {
     let endY = startY - config.device_height * 0.3
     FloatyInstance.setFloatyText('查找任务')
     sleep(1000)
-    let toFinishList = widgetUtils.widgetGetAll('去完成')
+    let toFinishList = widgetUtils.widgetGetAll('\\s*去完成')
     if (!toFinishList || toFinishList.length <= 0) {
       logUtils.warnInfo(['无可完成任务'])
+      signFailedUtil.recordFailedWidgets(this.taskCode, '每日任务')
       return
     }
     let toFinishBtn = toFinishList.filter(v => {
-      let title = v.parent().child(1).text()
+      let title = v.parent().parent().child(1).text()
       if (title && title.indexOf('视频') > -1) {
         return false
       }
@@ -180,7 +170,7 @@ function CreditRunner () {
     })
     if (toFinishBtn && toFinishBtn.length > 0) {
       toFinishBtn = toFinishBtn[0]
-      let title = toFinishBtn.parent().child(1).text()
+      let title = toFinishBtn.parent().parent().child(1).text()
       if (title) {
         debugInfo(['执行任务：{}', title])
       }
@@ -203,13 +193,15 @@ function CreditRunner () {
       let tmp
       if ((tmp = currentPackage()) != _package_name) {
         warnInfo(['检测到当前包名{}不正确，重新打开积分签到界面', tmp])
-        this.openCreditPage()
-        if (!this.enterCreditsTaskList()) {
-          errorInfo(['重新进入任务列表失败'])
-        }
+        openSignPage()
+        sleep(1000)
+        widgetUtils.widgetWaiting('去完成', null, 2000)
       }
       return this.doTask()
     }
+  }
+
+  this.doBrowseTask = function () {
     let browser15 = widgetUtils.widgetGetOne('逛15秒赚3积分')
     if (widgetUtils.widgetCheck('.*点击或滑动以下内容.*', 3000) && this.displayButtonAndClick(browser15, '15秒任务')) {
       sleep(1000)
@@ -238,6 +230,16 @@ function CreditRunner () {
     }
     commonFunctions.minimize(_package_name)
   }
+
+  function openSignPage () {
+    let url = 'alipays://platformapi/startapp?appId=20000067&url=https%3A%2F%2Frender.alipay.com%2Fp%2Fyuyan%2F180020380000000023%2Fpoint-sign-in.html%3FchInfo%3D&launchKey=3755a1a6-6b02-4508-8714-cd2d393b08e9-1704164626631'
+    app.startActivity({
+      action: 'android.intent.action.VIEW',
+      data: url,
+      packageName: 'com.eg.android.AlipayGphone'
+    })
+  }
+
 }
 
 CreditRunner.prototype = Object.create(BaseSignRunner.prototype)
