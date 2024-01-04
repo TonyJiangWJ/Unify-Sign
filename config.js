@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-12-10 00:16:26
+ * @Last Modified time: 2024-01-04 21:26:22
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -26,6 +26,7 @@ let default_config = {
   show_engine_id: false,
   develop_mode: false,
   develop_saving_mode: false,
+  record_failed_info: false,
   save_yolo_train_data: false,
   enable_visual_helper: false,
   check_device_posture: false,
