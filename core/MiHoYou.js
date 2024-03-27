@@ -49,32 +49,41 @@ function SignRunner () {
       }, '找到了签到福利按钮')
       automator.clickCenter(signWidget)
       sleep(3000)
-      let regex = /[xX]\d+第\s*(\d+)\s*天/
-      let waitingForSigns = widgetUtils.widgetGetAll(regex, null, true)
-      if (waitingForSigns) {
+      let regex = /第\s*(\d+)\s*天/
+      if (widgetUtils.widgetWaiting('.*签到提醒.*')) {
         FloatyInstance.setFloatyText('进入签到页面成功，准备截图查询是否有可签到内容')
         sleep(1000)
-        let screen = commonFunctions.checkCaptureScreenPermission()
-        if (screen) {
-          screen = images.cvtColor(images.grayscale(screen), 'GRAY2BGRA')
-          let point = images.findImage(screen, images.fromBase64(_icon_img))
-          if (point) {
-            FloatyInstance.setFloatyInfo({
-              x: point.x,
-              y: point.y
-            }, '准备签到')
-            sleep(1000)
-            automator.click(point.x, point.y)
-          } else {
-            FloatyInstance.setFloatyText('未找到签到按钮，可能已经签到了')
-            sleep(1000)
-          }
-          FloatyInstance.setFloatyText('签到执行完毕')
+        let signBtn = selector().filter(node => node && node.indexInParent() == 0 && node.depth() == 14 && node.clickable() == false && node.className() == 'android.widget.Image').findOne(config.timeout_findOne)
+        if (this.displayButton(signBtn, '签到按钮')) {
           sleep(1000)
+          automator.click(signBtn.bounds().left, signBtn.bounds().bottom)
+          FloatyInstance.setFloatyText('签到成功')
           this.setExecuted()
         } else {
-          FloatyInstance.setFloatyText('获取截图失败 无法签到')
+          FloatyInstance.setFloatyText('未能通过控件找到今日签到按钮')
           sleep(1000)
+          let screen = commonFunctions.checkCaptureScreenPermission()
+          if (screen) {
+            screen = images.cvtColor(images.grayscale(screen), 'GRAY2BGRA')
+            let point = images.findImage(screen, images.fromBase64(_icon_img))
+            if (point) {
+              FloatyInstance.setFloatyInfo({
+                x: point.x,
+                y: point.y
+              }, '准备签到')
+              sleep(1000)
+              automator.click(point.x, point.y)
+            } else {
+              FloatyInstance.setFloatyText('未找到签到按钮，可能已经签到了')
+              sleep(1000)
+            }
+            FloatyInstance.setFloatyText('签到执行完毕')
+            sleep(1000)
+            this.setExecuted()
+          } else {
+            FloatyInstance.setFloatyText('获取截图失败 无法签到')
+            sleep(1000)
+          }
         }
       }
     } else {
@@ -89,7 +98,6 @@ function SignRunner () {
     this.openMiHoYouPage()
     FloatyInstance.setFloatyText('准备签到')
     this.checkAndCollect()
-    FloatyInstance.setFloatyText('领取完毕')
     commonFunctions.minimize(_package_name)
   }
 }

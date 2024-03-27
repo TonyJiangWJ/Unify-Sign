@@ -161,16 +161,12 @@ function BeanCollector () {
       x: jingdongConfig.plant_bean_enter_x || this.cvt(1230), y: jingdongConfig.plant_bean_enter_y || this.cvt(440)
     }
     if (!doubleCheck) {
-      let countDown = new java.util.concurrent.CountDownLatch(1)
-      let entryIcon = null
       this.pushLog('通过控件查找种豆得豆入口')
-      threads.start(function () {
-        entryIcon = selector().className('android.widget.Image').clickable().untilFind()
-        countDown.countDown()
-      })
-      countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
-      if (entryIcon && entryIcon.length >= 1 && (entryIcon = entryIcon[0])) {
+      let entryIcon = getEntries()
+      if (entryIcon && entryIcon.length >= 1) {
         this.pushLog('通过控件方式找到了种豆得豆入口')
+        debugInfo(['find entries: {} {}', entryIcon.length, (entryIcon.map(entry => { let b = entry.bounds();return [b.left, b.top, b.right, b.bottom]}))])
+        entryIcon = entryIcon[0]
         this.displayButtonAndClick(entryIcon, '种豆得豆入口')
       } else {
         this.pushLog('未能通过坐标方式找到种豆得豆入口，使用坐标点击')
@@ -235,6 +231,17 @@ function BeanCollector () {
     }
   }
 
+  function getEntries() {
+    let countDown = new java.util.concurrent.CountDownLatch(1)
+    let entryIcon = null
+    threads.start(function () {
+      entryIcon = selector().className('android.widget.Image').clickable().boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.5).untilFind()
+      countDown.countDown()
+    })
+    countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
+    return entryIcon
+  }
+
   this.doubleSign = function (doubleCheck) {
     if (this.isSubTaskExecuted(DOUBLE_SIGN)) {
       return
@@ -243,14 +250,7 @@ function BeanCollector () {
       x: jingdongConfig.double_sign_posi_x || this.cvt(1230), y: jingdongConfig.double_sign_posi_x || this.cvt(620)
     }
     if (!doubleCheck) {
-      let countDown = new java.util.concurrent.CountDownLatch(1)
-      let entryIcon = null
-      this.pushLog('通过控件查找双签领豆入口')
-      threads.start(function () {
-        entryIcon = selector().className('android.widget.Image').clickable().untilFind()
-        countDown.countDown()
-      })
-      countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
+      let entryIcon = getEntries()
       if (entryIcon && entryIcon.length > 1 && (entryIcon = entryIcon[1])) {
         this.pushLog('通过控件方式找到了双签领豆入口')
         this.displayButtonAndClick(entryIcon, '双签领豆入口')

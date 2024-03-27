@@ -237,7 +237,6 @@ const AdvanceCommonConfig = {
         capture_permission_button: 'START NOW|立即开始|允许',
         is_pro: false,
         enable_call_state_control: true,
-        record_failed_info: true,
       }
     }
   },
@@ -317,10 +316,9 @@ const AdvanceCommonConfig = {
       <tip-block>偶尔通过captureScreen获取截图需要等待很久，或者一直阻塞无法进行下一步操作，建议开启异步等待，然后设置截图等待时间</tip-block>
       <switch-cell title="是否异步等待截图" v-model="configs.async_waiting_capture" />
       <number-field v-if="configs.async_waiting_capture" v-model="configs.capture_waiting_time" label="获取截图超时时间" label-width="8em" placeholder="请输入超时时间" >
-      <template #right-icon><span>毫秒</span></template>
+        <template #right-icon><span>毫秒</span></template>
       </number-field>
       <switch-cell v-if="!configs.is_pro" title="是否通话时暂停脚本" title-style="width: 10em;flex:2;" label="需要授权AutoJS获取通话状态，Pro版暂时无法使用" v-model="configs.enable_call_state_control" />
-      <switch-cell title="是否记录签到失败时的控件等信息" title-style="width: 12em;flex:2;" v-model="configs.record_failed_info" />
     </van-cell-group>
   </div>`
 }

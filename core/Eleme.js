@@ -26,6 +26,7 @@ function SignRunner () {
   }
   BaseSignRunner.call(this)
   let _package_name = 'me.ele'
+  this.visitedTasks = []
   /**
    *  扩展exec代码 实现具体的签到逻辑
    */
@@ -36,23 +37,21 @@ function SignRunner () {
       automator.clickCenter(mine)
       sleep(1000)
       FloatyInstance.setFloatyText('通过OCR查找赚吃货豆')
-      let rewardButton = this.captureAndCheckByOcr('.*(赚|賺)吃货豆.*', '赚吃货豆', null, null, true, 3)
+      let rewardButton = this.captureAndCheckByOcr('.*(赚|賺)?吃货豆.*', '赚吃货豆', null, null, true, 3)
       if (rewardButton) {
         sleep(1000)
         if (!this.signedStore.getValue().executed) {
-          let signBtn = this.captureAndCheckByOcr('立即签到|今日签到.*', '立即签到')//widgetUtils.widgetGetOne('立即签到')
+          let signBtn = widgetUtils.widgetGetOne('签到')
           if (signBtn) {
-            signBtn = this.wrapOcrPointWithBounds(signBtn)
             boundsInfo = signBtn.bounds()
             FloatyInstance.setFloatyInfo({ x: boundsInfo.centerX(), y: boundsInfo.centerY() }, '立即签到')
             sleep(500)
             automator.clickCenter(signBtn)
             sleep(1000)
-            this.captureAndCheckByOcr('.*收下.*', '收下', null, null, true)
             this.signedStore.updateStorageValue(value => value.executed = true)
           } else {
             FloatyInstance.setFloatyText('未找到立即签到按钮')
-            let signed = widgetUtils.widgetCheck('(今日已|明日)签到.*', 1500) || this.captureAndCheckByOcr('(今日已|明日)签到.*', '今日已签到')
+            let signed = widgetUtils.widgetCheck('(今日已|明日)签到.*', 1500)
             if (signed) {
               FloatyInstance.setFloatyText('今日已签到')
               this.signedStore.updateStorageValue(value => value.executed = true)
@@ -75,27 +74,51 @@ function SignRunner () {
     commonFunctions.minimize()
   }
 
+  this.openDrawer = function (reopen) {
+    let browseAndReward = widgetUtils.widgetGetOne('领豆赚豆按钮')
+    if (!this.displayButtonAndClick(browseAndReward, '找到了领豆赚豆按钮')) {
+      FloatyInstance.setFloatyText('未找到领豆赚豆按钮')
+      // 自动设置五分钟后继续
+      this.createNextSchedule(this.taskCode)
+      return false
+    }
+    widgetUtils.widgetWaiting('任务记录|展开更多')
+    sleep(1000)
+    let anchorWidget = widgetUtils.widgetGetOne('浏览赚豆')
+    if (anchorWidget) {
+      let point = { x: anchorWidget.bounds().centerX(), y: anchorWidget.bounds().centerY() }
+      FloatyInstance.setFloatyInfo(point, '浏览赚豆')
+      // 向上滑动
+      automator.swipe(point.x, point.y, point.x, config.device_height / 2, 800)
+      return true
+    } else {
+      FloatyInstance.setFloatyText('未找到浏览赚豆按钮')
+      sleep(1000)
+      if (!reopen) {
+        return this.openDrawer(true)
+      }
+    }
+    return false
+  }
+
   /**
    * 执行逛逛任务
    */
   this.doHangTasks = function (hangLimit) {
     hangLimit = hangLimit || 5
-    let browseAndReward = this.captureAndCheckByOcr('浏览(.)豆', '浏览赚豆', [config.device_width * 0.5, 0, config.device_width * 0.5, config.device_height], null, true)
-    if (!browseAndReward) {
-      FloatyInstance.setFloatyText('未找到浏览赚豆')
-      // 自动设置五分钟后继续
-      this.createNextSchedule(this.taskCode)
+    if (!this.openDrawer()) {
       return
     }
-    let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务')
+    sleep(1000)
+    let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', [config.device_width / 2, 0, config.device_width / 2, config.device_height])
     // 增加限制 避免进入死循环 这里大概就11个
-    let limit = 15, lastTask = null, region = null, executed = false
+    let limit = 15, region = null, executed = false
     while (checkBtn && limit-- > 0) {
       let bds = checkBtn.bounds()
       let checkTaskInfo = this.captureAndGetOcrText('任务信息', [0, bds.top - bds.height(), bds.left, bds.height() * 2.5])
       debugInfo(['任务信息：{}', checkTaskInfo])
-      if (checkTaskInfo == lastTask) {
-        warnInfo(['当前任务和上一个任务相同，可能又是饿了么搞幺蛾子：{}', checkTaskInfo])
+      if (this.visitedTasks.indexOf(checkTaskInfo) >= 0) {
+        warnInfo(['当前任务已执行过，可能又是饿了么搞幺蛾子：{}', checkTaskInfo])
         region = [0, bds.bottom, config.device_width, config.device_height - bds.bottom]
         checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', region)
         if (!checkBtn) {
@@ -103,7 +126,7 @@ function SignRunner () {
           break
         }
       }
-      lastTask = checkTaskInfo
+      this.visitedTasks.push(checkTaskInfo)
       FloatyInstance.setFloatyText('找到了去(浏览|逛逛|完成)')
       sleep(500)
       automator.clickCenter(checkBtn)
@@ -118,7 +141,7 @@ function SignRunner () {
       automator.back()
       sleep(1000)
       let l = 3
-      while (!this.captureAndCheckByOcr('浏览(赚|賺)豆', '浏览赚豆') && l-- > 0) {
+      while (!widgetUtils.widgetCheck('浏览赚豆') && l-- > 0) {
         automator.back()
         sleep(1000)
       }
@@ -127,12 +150,22 @@ function SignRunner () {
       executed = true
     }
     if (!checkBtn) {
+      let hangBtns = widgetUtils.widgetGetAll('去(浏览|逛逛|完成)', 1000)
+      if (hangBtns && hangBtns.length > 0) {
+        FloatyInstance.setFloatyText('有任务按钮，但OCR识别失败')
+        warnInfo(['有任务按钮，但OCR识别失败'], true)
+      } else {
+        FloatyInstance.setFloatyText('控件识别无任务按钮')
+        // hangLimit = 0
+      }
       if (executed && --hangLimit > 0) {
         FloatyInstance.setFloatyText('退出并重新进入当前页面，刷新列表')
         automator.back()
         sleep(1000)
-        if (this.captureAndCheckByOcr('.*(赚|賺)吃货豆.*', '赚吃货豆', null, null, true, 3)) {
+        if (this.captureAndCheckByOcr('.*(赚|賺)?吃货豆.*', '赚吃货豆', null, null, true, 3)) {
           return this.doHangTasks(hangLimit)
+        } else {
+          FloatyInstance.setFloatyText('未找到赚吃货豆按钮，退出并重新进入当前页面失败')
         }
       }
       FloatyInstance.setFloatyText('未找到去(浏览|逛逛|完成)')
