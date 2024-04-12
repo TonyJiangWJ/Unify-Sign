@@ -1,3 +1,8 @@
+[![GitHub forks](https://img.shields.io/github/forks/TonyJiangWJ/Unify-Sign?style=flat-square)](https://github.com/TonyJiangWJ/Unify-Sign/forks)
+[![GitHub stars](https://img.shields.io/github/stars/TonyJiangWJ/Unify-Sign?style=flat-square)](https://github.com/TonyJiangWJ/Unify-Sign/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/TonyJiangWJ/Unify-Sign?style=flat-square)](https://github.com/TonyJiangWJ/Unify-Sign/issues)
+[![Page Views Count](https://badges.toozhao.com/badges/01HV8RTJSBDZVMS36ZWQR470XM/green.svg)](https://badges.toozhao.com/stats/01HV8RTJSBDZVMS36ZWQR470XM "Get your own page views count badge on badges.toozhao.com")
+
 # 简介
 
 - 聚合签到，一次性执行多个APP的签到，薅羊毛等等都不在话下，更多APP逐渐完善中
