@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2024-01-04 21:26:22
+ * @Last Modified time: 2024-05-11 23:03:25
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -74,6 +74,7 @@ let default_config = {
   // github release url 用于检测更新状态
   github_latest_url: 'https://api.github.com/repos/TonyJiangWJ/Unify-Sign/releases/latest',
   history_tag_url: 'https://api.github.com/repos/TonyJiangWJ/Unify-Sign/tags',
+  forum_url: 'https://autoscripts.flarum.cloud/',
   killAppWithGesture: true,
   // 延迟启动时延 5秒 悬浮窗中进行的倒计时时间
   delayStartTime: 5,
@@ -291,7 +292,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.1.0'
+config.code_version = 'v2.2.0'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

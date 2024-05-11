@@ -45,6 +45,11 @@ function SignRunner () {
 
   this.checkAndCollect = function () {
     let signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到'), '找到了签到按钮')
+    if (!signBtn) {
+      if (this.captureAndCheckByOcr('我的淘宝', '我的淘宝', [config.device_width / 2, config.device_height * 0.8, config.device_width / 2, config.device_height * 0.2], 1000, true, 3)) {
+        signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到领现金'), '找到了签领现金按钮')
+      }
+    }
     if (signBtn) {
       widgetUtils.widgetWaiting('去赚元宝', null, 2000)
       sleep(1000)

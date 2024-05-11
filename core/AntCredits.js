@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2024-01-02 21:18:18
+ * @Last Modified time: 2024-04-25 23:32:38
  * @Description: 
  */
 
@@ -161,19 +161,35 @@ function CreditRunner () {
       signFailedUtil.recordFailedWidgets(this.taskCode, '每日任务')
       return
     }
+    let anyFailed = false
+    let firstTitle = null
     let toFinishBtn = toFinishList.filter(v => {
-      let title = v.parent().parent().child(1).text()
-      if (title && title.indexOf('视频') > -1) {
+      try {
+        // TODO 需要优化一下这块控件信息的判断 一旦结构变更就无法正确执行了
+        let title = v.parent().parent().parent().child(0).child(0).child(1).text()
+        logUtils.debugInfo(['读取任务标题为：{}', title])
+        if (title && title.indexOf('视频') > -1) {
+          return false
+        }
+        if (title && title.indexOf('15秒') > -1) {
+          if (!firstTitle) {
+            firstTitle = title
+          }
+          return true
+        }
+        return false
+      } catch (e) {
+        anyFailed = true
+        logUtils.errorInfo('读取控件信息失败 可能控件信息又变了' + e)
         return false
       }
-      return title && title.indexOf('15秒') > -1
     })
+    if (anyFailed) {
+      signFailedUtil.recordFailedWidgets(this.taskCode, '任务控件信息')
+    }
     if (toFinishBtn && toFinishBtn.length > 0) {
       toFinishBtn = toFinishBtn[0]
-      let title = toFinishBtn.parent().parent().child(1).text()
-      if (title) {
-        debugInfo(['执行任务：{}', title])
-      }
+      debugInfo(['执行任务：{}', firstTitle])
     } else {
       FloatyInstance.setFloatyText('非浏览任务，请手动执行')
       sleep(1000)
