@@ -37,6 +37,7 @@ function SignRunner () {
         this.setExecuted()
       }
     }
+    FloatyInstance.setFloatyText('执行完毕')
     commonFunctions.minimize()
   }
 
@@ -47,8 +48,8 @@ function SignRunner () {
     this.awaitAndSkip()
     let mineBtn = widgetUtils.widgetGetOne('我的')
     if (this.displayButtonAndClick(mineBtn, '我的', 1000)) {
-      let entry = widgetUtils.widgetGetOne('米金星球')
-      if (this.displayButtonAndClick(entry, '米金星球入口')) {
+      let entry = widgetUtils.widgetGetOne('米金')
+      if (this.displayButtonAndClick(entry, '米金入口')) {
         return true
       }
     } else if (tryTime <= 3) {
@@ -59,47 +60,59 @@ function SignRunner () {
 
   this.doSign = function () {
     sleep(1000)
-    widgetUtils.widgetWaiting('做任务领米金')
-    let dialySign = widgetUtils.widgetGetOne('每日签到')
-    let success = this.displayButtonAndClick(dialySign, '每日签到')
-    let browseBtn = widgetUtils.widgetGetOne('去浏览')
-    while (this.displayButtonAndClick(browseBtn, '去浏览')) {
-      FloatyInstance.setFloatyText('等待五秒')
-      sleep(5000)
-      automator.back()
+    let success = false
+    if (this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 3)) {
       sleep(1000)
-      let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
-      this.displayButtonAndClick(rewardBtn, '领取奖励')
-      sleep(500)
-      browseBtn = widgetUtils.widgetGetOne('去浏览')
-    }
-    let doTask = widgetUtils.widgetGetOne('做任务')
-    if(this.displayButtonAndClick(doTask, '做任务')) {
-      sleep(1000)
-      widgetUtils.widgetWaiting('关注')
-      let likeBtn = widgetUtils.widgetGetById('com.xiaomi.*mi_circle_like_iv', 2000, matcher => matcher.boundsInside(config.device_width / 2, config.device_height * 0.2, config.device_width, config.device_height * 0.7))
-      let clicked = this.displayButtonAndClick(likeBtn, '点赞按钮')
-      automator.back()
-      sleep(1000)
-      if (clicked) {
-        let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
-        this.displayButtonAndClick(rewardBtn, '领取奖励')
+      if (widgetUtils.widgetCheck('米金签到|已连签|立即签到')) {
+        let signBtn = widgetUtils.widgetGetOne('立即签到')
+        if (this.displayButtonAndClick(signBtn, '立即签到')) {
+          this.pushLog('签到完成')
+          sleep(1000)
+          success = true
+        } else if (widgetUtils.widgetCheck('已签到')) {
+          this.pushLog('今日已签到')
+          success = true
+        }
       }
-    }
-    // 领取奖励
-    let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
-    while (this.displayButtonAndClick(rewardBtn, '领取奖励')) {
-      auto.clearCache && auto.clearCache()
-      rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
-      sleep(500)
+      // todo 校验签到已完成
+      this.doBrowseTasks()
     }
     return success
   }
 
-  let _this = this
-  function findReward() {
-    let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 2000)
-    return this.displayButtonAndClick(rewardBtn, '领取奖励')
+  this.doBrowseTasks = function () {
+    this.pushLog('查找 去浏览')
+    let browseBtn = widgetUtils.widgetGetOne('去浏览')
+    if (this.displayButtonAndClick(browseBtn, '去浏览', 1000, true)) {
+      sleep(2000)
+      let browseCount = 0
+      while (browseCount++ < 8) {
+        let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 1000)
+        if (this.displayButtonAndClick(rewardBtn, '领取奖励')) {
+          sleep(1000)
+          break
+        }
+      }
+      this.pushLog('返回查找 米金天天赚')
+      automator.back()
+      sleep(1000)
+      let tryTime = 1
+      let clicked = false
+      while (!(clicked = this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 2)) && ++tryTime <= 2) {
+        sleep(1000)
+        this.pushLog('未找到 米金天天赚 触发返回')
+        automator.back()
+      }
+      if (clicked) {
+        if (!widgetUtils.widgetCheck('米金签到|已连签|立即签到')) {
+          this.pushLog('未找到 米金签到|已连签|立即签到')
+          this.pushLog('再次查找并点击 米金天天赚' + this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 2))
+        }
+        this.doBrowseTasks()
+      }
+    } else {
+      this.pushLog('未找到去浏览按钮')
+    }
   }
 
 }
