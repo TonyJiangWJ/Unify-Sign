@@ -63,7 +63,10 @@ function SignRunner () {
     sleep(500)
     let creditEntry = widgetUtils.widgetGetOne('商家积分')
     if (this.displayButtonAndClick(creditEntry, '商家积分')) {
-      return true
+      creditEntry = widgetUtils.widgetGetOne('每日签到')
+      if (this.displayButtonAndClick(creditEntry, '每日签到')) {
+        return true
+      }
     }
 
     // FloatyInstance.setFloatyText('查找 商家服务 控件')
@@ -80,23 +83,13 @@ function SignRunner () {
   }
 
   this.checkDailySign = function () {
-    let region = [config.device_width / 2, config.device_height * 0.3, config.device_width / 2, config.device_height * 0.3]
-    let targetContainer = widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
-    if (targetContainer) {
-      sleep(1000)
-      widgetUtils.widgetGetById('am-tabs-bar-activeTab-content')
-      let containerBounds = targetContainer.bounds()
-      logUtils.debugInfo(['根据控件信息获取ocr识别区域'])
-      region = [containerBounds.centerX(), containerBounds.top - 20, containerBounds.width() / 2, containerBounds.height()]
-    }
-    logUtils.debugInfo(['ocr识别区域：{}', JSON.stringify(region)])
-    WarningFloaty.addRectangle('识别区域', region)
-    sleep(1000)
-    if (this.captureAndCheckByOcr('^领取$', '领取按钮', region, null, true, 3)) {
+    let signed = this.captureAndCheckByOcr('已领取')
+    if (this.displayButton(signed, '已领取')) {
       this.setExecuted()
     } else {
-      FloatyInstance.setFloatyText('未找到领取按钮')
+      FloatyInstance.setFloatyText('未找到已领取按钮')
     }
+    
   }
 
   /**
@@ -104,7 +97,7 @@ function SignRunner () {
    */
   this.checkAndSign = function () {
     FloatyInstance.setFloatyText('查找今日签到控件')
-    let signEntry = widgetUtils.widgetGetOne('今日签到领.*')
+    let signEntry = this.captureAndCheckByOcr('今日签到领.*')
     if (this.displayButton(signEntry, '今日签到')) {
       let clickPoint = { x: signEntry.bounds().left, y: signEntry.bounds().bottom + signEntry.bounds().height() }
       logUtils.debugInfo(['点击位置：{}', JSON.stringify(clickPoint)])
@@ -115,6 +108,7 @@ function SignRunner () {
       this.doTask()
     } else {
       FloatyInstance.setFloatyText('未找到签到入口，可能今天已经完成签到')
+      this.checkDailySign()
       this.findEntranceAndDoTask()
       // TODO 校验是否真实的完成了签到
       // this.setExecuted()
@@ -123,12 +117,7 @@ function SignRunner () {
   }
 
   this.findEntranceAndDoTask = function () {
-    FloatyInstance.setFloatyText('查找 领更多积分 入口')
-    if (this.captureAndCheckByOcr('^领更多积分$', '任务入口', null, null, true, 3)) {
-      this.checkDailySign()
-      sleep(1000)
-      this.doTask()
-    }
+    this.doTask()
     FloatyInstance.setFloatyText('')
   }
 
@@ -140,31 +129,9 @@ function SignRunner () {
     }
     let startY = config.device_height - config.device_height * 0.15
     let endY = startY - config.device_height * 0.3
-    FloatyInstance.setFloatyText('查找去浏览|去完成')
-    let browserBtns = widgetUtils.widgetGetAll('去浏览|去完成') || []
-    let findOne = false
-    browserBtns = browserBtns.filter(btn => {
-      if (btn.text() == '去浏览') {
-        findOne = true
-        return true
-      }
-      if (findOne) {
-        return false
-      }
-      let btnContainer = btn.parent()
-      let listContainer = btnContainer.parent()
-      if (btnContainer.indexInParent() <= 1) {
-        return false
-      }
-      let titleContainer = listContainer.child(btnContainer.indexInParent() - 1)
-      let title = titleContainer.child(0).text()
-      return title.indexOf('15秒') > -1
-    })
-    let browserBtn = null
-    if (browserBtns.length > 0) {
-      browserBtn = browserBtns[0]
-    }
-    if (this.displayButtonAndClick(browserBtn, '去浏览', null, true)) {
+    
+    let browserBtn = this.captureAndCheckByOcr('去浏览|去完成')
+    if (this.displayButtonAndClick(browserBtn, '去浏览')) {
       widgetUtils.widgetWaiting('.*浏览15秒.*')
       let limit = 16
       while (limit-- > 0 && !widgetUtils.widgetCheck('任务已完成', 1000)) {

@@ -175,7 +175,7 @@ function BaseSignRunner () {
   this.displayButtonAndClick = function (button, desc, delay, clickByA11y) {
     this.displayButton(button, desc, delay)
     if (button) {
-      if (clickByA11y && button.clickable()) {
+      if (clickByA11y && typeof button.clickable !== 'undefined' && button.clickable()) {
         button.click()
       } else if (automator.checkCenterClickable(button)) {
         automator.clickCenter(button)
@@ -257,15 +257,18 @@ function BaseSignRunner () {
       logUtils.warnInfo('当前AutoJS不支持OCR')
       return null
     }
+    content = content || regex
     delay = delay || 800
     if (typeof loop === 'undefined') {
       loop = 3
     }
     FloatyInstance.hide()
+    logFloaty.hide()
     sleep(40)
     let screen = commonFunctions.captureScreen()
     FloatyInstance.restore()
-    logUtils.debugInfo('准备OCR查找目标：' + content)
+    logFloaty.show()
+    logUtils.debugInfo('准备OCR查找目标：' + content + ' 正则：' + regex)
     if (screen) {
       let findText = localOcrUtil.recognizeWithBounds(screen, region, regex)
       if (findText && findText.length > 0) {
@@ -404,6 +407,10 @@ function BaseSignRunner () {
 
   this.pushLog = function (text) {
     logFloaty.pushLog(text)
+  }
+
+  this.replaceLastLog = function (text) {
+    logFloaty.replaceLastLog(text)
   }
 
   this.pushErrorLog = function (text) {

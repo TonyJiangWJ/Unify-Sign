@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2019-12-09 20:42:08
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2024-05-11 23:03:25
+ * @Last Modified time: 2024-12-02 15:09:26
  * @Description: 
  */
 require('./lib/Runtimes.js')(global)
@@ -67,6 +67,8 @@ let default_config = {
   bottomHeight: 200,
   // 当以下包正在前台运行时，延迟执行
   skip_running_packages: [],
+  // 视频app，当前app前台时先退出到桌面再打开支付宝 避免小窗执行
+  video_packages: [{ packageName: 'tv.danmaku.bili', appName: '哔哩哔哩' }],
   warn_skipped_ignore_package: false,
   warn_skipped_too_much: false,
   auto_check_update: true,
@@ -94,17 +96,15 @@ let default_config = {
   other_accessisibility_services: '',
   // 不需要执行resolver
   noneed_resolve_dex: false,
+  notificationId: 113,
+  notificationChannelId: 'unify_sign_channel_id',
+  notificationChannel: '聚合签到通知',
+  show_summary_notice: true,
   supported_signs: [
     {
       name: '蚂蚁积分签到',
       taskCode: 'AntCredits',
       script: 'AntCredits.js',
-      enabled: true
-    },
-    {
-      name: '全家签到',
-      taskCode: 'Fami',
-      script: 'Fami.js',
       enabled: true
     },
     {
@@ -157,11 +157,6 @@ let default_config = {
           taskCode: 'fishpond',
           taskName: '鱼塘签到',
           enabled: true,
-        },
-        {
-          taskCode: 'orchard',
-          taskName: '叮咚果园',
-          enabled: true,
         }
       ]
     },
@@ -205,6 +200,18 @@ let default_config = {
       name: '小米商城米金',
       taskCode: 'XiaomiShop',
       script: 'XiaomiShop.js',
+      enabled: true
+    },
+    {
+      name: '华住会签到',
+      taskCode: 'HuaZhu',
+      script: 'HuaZhu.js',
+      enabled: true
+    },
+    {
+      name: '小米钱包',
+      taskCode: 'XiaomiWallet',
+      script: 'XiaomiWallet.js',
       enabled: true
     }
   ].concat(custom_config.supported_signs || [])
@@ -292,7 +299,7 @@ config.overwrite = (key, value) => {
 }
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.2.0'
+config.code_version = 'v2.3.0'
 if (!isRunningMode) {
   module.exports = function (__runtime__, scope) {
     if (typeof scope.config_instance === 'undefined') {

@@ -41,11 +41,14 @@ function SignRunner () {
       logFloaty.pushLog('未找到关闭按钮')
       FloatyInstance.setFloatyText('没有关闭确认弹框')
     }
+    this.processGastureIfNeed()
   }
 
   this.checkAndCollect = function () {
-    let signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到'), '找到了签到按钮')
+    this.processGastureIfNeed()
+    let signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('红包签到'), '找到了签到按钮')
     if (!signBtn) {
+      this.processGastureIfNeed()
       if (this.captureAndCheckByOcr('我的淘宝', '我的淘宝', [config.device_width / 2, config.device_height * 0.8, config.device_width / 2, config.device_height * 0.2], 1000, true, 3)) {
         signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到领现金'), '找到了签领现金按钮')
       }
@@ -53,6 +56,7 @@ function SignRunner () {
     if (signBtn) {
       widgetUtils.widgetWaiting('去赚元宝', null, 2000)
       sleep(1000)
+      this.processGastureIfNeed()
       this.checkDailySign()
       this.browseAds()
       if (this.signed) {
@@ -83,6 +87,7 @@ function SignRunner () {
       return
     }
     sleep(1000)
+    this.processGastureIfNeed()
     let screen = commonFunctions.captureScreen()
     if (screen && localOcrUtil.enabled) {
       let find = localOcrUtil.recognizeWithBounds(screen, null, '.*立即签到.*')
@@ -92,7 +97,7 @@ function SignRunner () {
         sleep(1000)
         automator.click(bounds.centerX(), bounds.centerY())
         sleep(1000)
-        find = widgetUtils.widgetGetOne('.*继续领现金.*')
+        find = widgetUtils.widgetGetOne('.*继续领(现金|钱).*')
         if (find) {
           FloatyInstance.setFloatyInfo(this.boundsToPosition(find.bounds()), '继续领现金')
           this.signed = true
@@ -102,7 +107,7 @@ function SignRunner () {
       } else {
         FloatyInstance.setFloatyText('未找到立即签到，查找继续领现金')
         sleep(1000)
-        find = widgetUtils.widgetGetOne('.*继续领现金.*')
+        find = widgetUtils.widgetGetOne('.*继续领(现金|钱).*')
         if (find) {
           FloatyInstance.setFloatyInfo(this.boundsToPosition(find.bounds()), '继续领现金')
           this.signed = true
@@ -251,10 +256,11 @@ function SignRunner () {
 
   this.browseAds = function () {
     sleep(1000)
+    this.processGastureIfNeed()
     if (storageHelper.isHangTaskDone() || storageHelper.isHangTooMuch()) {
       this.checkCountdownBtn(true)
     } else {
-      let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
+      let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4,}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
       if (moreCoins) {
         this.checkCountdownBtn()
         if (this.finishThisLoop) {
@@ -301,6 +307,8 @@ function SignRunner () {
         if (!noMore && !this.finishThisLoop) {
           this.browseAds()
         }
+      } else {
+        this.checkCountdownBtn(true)
       }
     }
   }
@@ -370,6 +378,30 @@ function SignRunner () {
     this.checkAndCollect()
     sleep(1000)
     commonFunctions.minimize(_package_name)
+  }
+
+  this.processGastureIfNeed = function () {
+    let tips = widgetUtils.widgetGetOne('.*完成验证.*', 1000)
+    if (tips) {
+      this.pushLog('存在滑动验证码')
+      let slider = widgetUtils.widgetGetOne('滑块')
+      if (!slider) {
+        this.pushErrorLog('未能找到滑块位置')
+        warnInfo(['未能找到滑块位置'], true)
+        return
+      }
+      let start = {
+        x: slider.bounds().left + 10,
+        y: slider.bounds().centerY()
+      }
+      let end = {
+        x: config.device_width - 10,
+        y: slider.bounds().bottom - 10
+      }
+      automator.gesturePath(start, end, 1000)
+      this.pushLog('手势执行完毕,等待验证结束')
+      sleep(2000)
+    }
   }
 }
 

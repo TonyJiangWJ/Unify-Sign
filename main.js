@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2023-11-04 16:50:35
+ * @Last Modified time: 2024-11-21 15:48:49
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -29,6 +29,7 @@ let unlocker = require('./lib/Unlock.js')
 let mainExecutor = require('./core/MainExecutor.js')
 callStateListener.exitIfNotIdle()
 
+let localOcrUtil = require('./lib/LocalOcrUtil.js')
 commonFunctions.killDuplicateScript()
 logInfo('======初始化SQLite=======')
 let signTaskService = singletonRequire('SignTaskService')

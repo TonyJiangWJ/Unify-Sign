@@ -23,6 +23,7 @@ let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
   BaseSignRunner.call(this)
   const _package_name = 'com.xiaomi.shop'
+  const daily_sign_entry = '.*(做任务|米金天天|先赚米金兑权益|今日完成任务|去完成|去签到).*'
 
   /**
    *  扩展exec代码 实现具体的签到逻辑
@@ -32,6 +33,8 @@ function SignRunner () {
     // 在这里写签到执行的代码
     // ...
     if (this.openSignPage()) {
+      // 关闭更新提醒
+      this.displayButtonAndClick(widgetUtils.widgetGetOne('下次再说', 2000), '更新提醒，跳过')
       if (this.doSign()) {
         // 执行成功后触发 标记当前任务已完成 失败了请勿调用
         this.setExecuted()
@@ -61,7 +64,7 @@ function SignRunner () {
   this.doSign = function () {
     sleep(1000)
     let success = false
-    if (this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 3)) {
+    if (this.captureAndCheckByOcr(daily_sign_entry, '赚米金入口', null, 1000, true, 3)) {
       sleep(1000)
       if (widgetUtils.widgetCheck('米金签到|已连签|立即签到')) {
         let signBtn = widgetUtils.widgetGetOne('立即签到')
@@ -86,27 +89,30 @@ function SignRunner () {
     if (this.displayButtonAndClick(browseBtn, '去浏览', 1000, true)) {
       sleep(2000)
       let browseCount = 0
-      while (browseCount++ < 8) {
+      let clickedBack = false
+      // 需要10秒 多等待些
+      while (browseCount++ < 15) {
         let rewardBtn = widgetUtils.widgetGetOne('领取奖励', 1000)
         if (this.displayButtonAndClick(rewardBtn, '领取奖励')) {
           sleep(1000)
+          clickedBack = true
           break
         }
       }
-      this.pushLog('返回查找 米金天天赚')
-      automator.back()
+      this.pushLog('返回查找 赚米金入口')
+      !clickedBack && automator.back()
       sleep(1000)
       let tryTime = 1
       let clicked = false
-      while (!(clicked = this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 2)) && ++tryTime <= 2) {
+      while (!(clicked = this.captureAndCheckByOcr(daily_sign_entry, '赚米金入口', null, 1000, true, 2)) && ++tryTime <= 2) {
         sleep(1000)
-        this.pushLog('未找到 米金天天赚 触发返回')
+        this.pushLog('未找到 赚米金入口 触发返回')
         automator.back()
       }
       if (clicked) {
         if (!widgetUtils.widgetCheck('米金签到|已连签|立即签到')) {
           this.pushLog('未找到 米金签到|已连签|立即签到')
-          this.pushLog('再次查找并点击 米金天天赚' + this.captureAndCheckByOcr('米金天天赚', '米金天天赚', null, 1000, true, 2))
+          this.pushLog('再次查找并点击 赚米金入口' + this.captureAndCheckByOcr(daily_sign_entry, '赚米金入口', null, 1000, true, 2))
         }
         this.doBrowseTasks()
       }

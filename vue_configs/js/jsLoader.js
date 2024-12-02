@@ -24,6 +24,7 @@ const loadJsList = [
  * 需要顺序加载的
  */
 const mainJsList = [
+  './js/configLabels.js',
   './js/routerIndex.js',
   './js/store.js',
   './js/app.js',

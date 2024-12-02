@@ -9,6 +9,7 @@ const LockConfig = {
       configs: {
         password: '',
         infinite_retry_unlock: false,
+        mute_exec: false,
         start_alipay_by_url: false,
         is_alipay_locked: true,
         multi_device_login: false,
@@ -70,6 +71,8 @@ const LockConfig = {
     <van-cell-group>
       <van-field v-model="configs.password" label="锁屏密码" type="password" placeholder="请输入锁屏密码" input-align="right" />
       <switch-cell title="无限尝试解锁" v-model="configs.infinite_retry_unlock" />
+      <tip-block>静音执行需要赋予AutoJS修改媒体音量的权限，否则无法正常执行</tip-block>
+      <switch-cell title="静音执行" v-model="configs.mute_exec" />
       <number-field v-model="configs.timeout_unlock" label="解锁超时时间" placeholder="请输入解锁超时时间">
         <template #right-icon><span>毫秒</span></template>
       </number-field>
@@ -224,6 +227,7 @@ const AdvanceCommonConfig = {
       activeNames: [],
       enabledServices: 'com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider:com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider:com.taobao.idlefishs.modify.opencv4/org.autojs.autojs.timing.work.AlarmManagerProvider',
       configs: {
+        show_summary_notice: true,
         auto_set_bang_offset: false,
         single_script: true,
         auto_restart_when_crashed: true,
@@ -233,6 +237,7 @@ const AdvanceCommonConfig = {
         // 截图相关
         async_waiting_capture: true,
         capture_waiting_time: 500,
+        capture_screen_gap: 10,
         request_capture_permission: true,
         capture_permission_button: 'START NOW|立即开始|允许',
         is_pro: false,
@@ -278,6 +283,8 @@ const AdvanceCommonConfig = {
   template: `
   <div>
     <van-cell-group>
+      <tip-block>脚本执行完毕显示一个通知，展示当前执行次数，总收集能量值等信息</tip-block>
+      <switch-cell title="执行完毕后显示通知" v-model="configs.show_summary_notice" />
       <tip-block>当需要使用多个脚本时不要勾选（如同时使用我写的蚂蚁庄园脚本），避免抢占前台</tip-block>
       <switch-cell title="是否单脚本运行" v-model="configs.single_script" />
       <tip-block>刘海屏或者挖孔屏悬浮窗显示位置和实际目测位置不同，需要施加一个偏移量，一般是负值，脚本运行时会自动设置，非异形屏请自行修改为0</tip-block>
@@ -316,6 +323,10 @@ const AdvanceCommonConfig = {
       <tip-block>偶尔通过captureScreen获取截图需要等待很久，或者一直阻塞无法进行下一步操作，建议开启异步等待，然后设置截图等待时间</tip-block>
       <switch-cell title="是否异步等待截图" v-model="configs.async_waiting_capture" />
       <number-field v-if="configs.async_waiting_capture" v-model="configs.capture_waiting_time" label="获取截图超时时间" label-width="8em" placeholder="请输入超时时间" >
+        <template #right-icon><span>毫秒</span></template>
+      </number-field>
+      <tip-block>两次截图之间如果时间太短，会经常性导致截图超时，需要自行调试修改最小间隔时间，如果不需要间隔，则设置为0即可</tip-block>
+      <number-field v-model="configs.capture_screen_gap" label="获取截图最小间隔时间" label-width="12em" placeholder="请输入间隔时间" >
         <template #right-icon><span>毫秒</span></template>
       </number-field>
       <switch-cell v-if="!configs.is_pro" title="是否通话时暂停脚本" title-style="width: 10em;flex:2;" label="需要授权AutoJS获取通话状态，Pro版暂时无法使用" v-model="configs.enable_call_state_control" />
@@ -399,6 +410,85 @@ const SkipPackageConfig = {
       </template>
       <van-field v-model="newSkipRunningAppName" placeholder="请输入应用名称" label="应用名称" />
       <van-field v-model="newSkipRunningPackage" placeholder="请输入应用包名" label="应用包名" />
+    </van-dialog>
+  </div>`
+}
+
+
+/**
+ * 视频应用设置
+ */
+const VideoPackageConfig = {
+  mixins: [mixin_common],
+  data () {
+    return {
+      newVideoPackage: '',
+      newVideoAppName: '',
+      showAddVideoPkgDialog: false,
+      configs: {
+        video_packages: [{ packageName: 'tv.danmaku.bili', appName: '哔哩哔哩' }],
+      }
+    }
+  },
+  methods: {
+    addSkipPackage: function () {
+      this.newVideoPackage = ''
+      this.newVideoAppName = ''
+      this.showAddVideoPkgDialog = true
+    },
+    doAddSkipPackage: function () {
+      if (!this.isNotEmpty(this.newVideoAppName)) {
+        vant.Toast('请输入应用名称')
+        return
+      }
+      if (!this.isNotEmpty(this.newVideoPackage)) {
+        vant.Toast('请输入应用包名')
+        return
+      }
+      if (this.addedVideoPackageNames.indexOf(this.newVideoPackage) < 0) {
+        this.configs.video_packages.push({ packageName: this.newVideoPackage, appName: this.newVideoAppName })
+      }
+    },
+    deleteSkipPackage: function (idx) {
+      this.$dialog.confirm({
+        message: '确认要删除' + this.configs.video_packages[idx].packageName + '吗？'
+      }).then(() => {
+        this.configs.video_packages.splice(idx, 1)
+      }).catch(() => { })
+    },
+    handlePackageChange: function (payload) {
+      this.newVideoAppName = payload.appName
+      this.newVideoPackage = payload.packageName
+    },
+  },
+  computed: {
+    addedVideoPackageNames: function () {
+      return this.configs.video_packages.map(v => v.packageName)
+    }
+  },
+  template: `
+  <div>
+    <van-divider content-position="left">
+      视频应用设置
+      <van-button style="margin-left: 0.4rem" plain hairline type="primary" size="mini" @click="addSkipPackage">增加</van-button>
+    </van-divider>
+    <tip-block>在HyperOS下，如果视频应用在前台时会在小窗中打开应用，导致脚本执行异常，通过在下面设置视频应用包名，脚本将在判断包名后先打开手机首页再打开应用，避免在小窗中打开。</tip-block>
+    <van-cell-group>
+      <div style="min-height:10rem;overflow:scroll;padding:1rem;background:#f1f1f1;">
+        <van-swipe-cell v-for="(skip,idx) in configs.video_packages" :key="skip.packageName" stop-propagation>
+          <van-cell :title="skip.appName" :label="skip.packageName" />
+          <template #right>
+            <van-button square type="danger" text="删除" @click="deleteSkipPackage(idx)" style="height: 100%"/>
+          </template>
+        </van-swipe-cell>
+      </div>
+    </van-cell-group>
+    <van-dialog v-model="showAddVideoPkgDialog" show-cancel-button @confirm="doAddSkipPackage" :get-container="getContainer">
+      <template #title>
+        <installed-package-selector @value-change="handlePackageChange" :added-package-names="addedVideoPackageNames"/>
+      </template>
+      <van-field v-model="newVideoAppName" placeholder="请输入应用名称" label="应用名称" />
+      <van-field v-model="newVideoPackage" placeholder="请输入应用包名" label="应用包名" />
     </van-dialog>
   </div>`
 }

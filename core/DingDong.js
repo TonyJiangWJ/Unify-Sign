@@ -24,15 +24,9 @@ function SignRunner () {
       taskName: '鱼塘签到',
       enabled: true,
     },
-    {
-      taskCode: 'orchard',
-      taskName: '叮咚果园',
-      enabled: true,
-    }
   ]
   let CREDIT_SIGN = this.subTasks[0]
   let FISHPOND = this.subTasks[1]
-  let ORCHARD = this.subTasks[2]
   let _package_name = 'com.yaya.zone'
   let mine_base64 = config.dingdong_config.mine_base64
   let fishpond_entry = config.dingdong_config.fishpond_entry
@@ -93,11 +87,8 @@ function SignRunner () {
       // 鱼塘
       this.fishpond()
       sleep(1000)
-      // 果园
-      this.orchard()
       if (this.isSubTaskExecuted(CREDIT_SIGN, true)
-        && this.isSubTaskExecuted(FISHPOND, true)
-        && this.isSubTaskExecuted(ORCHARD, true)) {
+        && this.isSubTaskExecuted(FISHPOND, true)) {
         infoLog(['全部任务完成'])
         this.setExecuted()
       } else {
@@ -154,6 +145,7 @@ function SignRunner () {
           sleep(2000)
         }
       }
+      // 检测左下角入口 是否有可领取
       let collect = this.captureAndCheckByImg(can_collect, '可领取')
       if (collect) {
         automator.click(collect.centerX(), collect.centerY())
@@ -170,6 +162,16 @@ function SignRunner () {
           this.checkForTargetImg(fishpond_check, '鱼塘加载校验')
           sign2 = this.captureAndCheckByImg(fishpond_normal_collect, '奖励领取')
         }
+        // ocr保底
+        let hasNext = false
+        do {
+          hasNext = false
+          let collectIcon = this.captureAndCheckByOcr('可领取', '可领取')
+          if (this.displayButtonAndClick(collectIcon, '可领取')) {
+            sleep(1000)
+            hasNext = true
+          }
+        } while (hasNext)
       }
       closeButton = this.captureAndCheckByImg(fishpond_close, '关闭按钮')
       if (closeButton) {
@@ -192,7 +194,7 @@ function SignRunner () {
     let pointEntry = widgetUtils.widgetGetOne('(福利.*)?积分')
     if (pointEntry) {
       this.displayButtonAndClick(pointEntry, '领积分', 1000)
-      if (widgetUtils.widgetCheck('积分规则|福利中心')) {
+      if (widgetUtils.widgetCheck('积分规则|福利中心|签到提醒')) {
         FloatyInstance.setFloatyText('进入积分界面成功')
         sleep(1000)
         let signContentReg = /^(立即|今日)?签到$/
@@ -213,43 +215,10 @@ function SignRunner () {
           }
           sleep(1000)
         }
-        sleep(500)
-        automator.back()
-        sleep(1000)
+        sleep(500)  
       }
-    }
-  }
-
-  let orchardEntry = config.dingdong_config.orchard_entry
-  let orchardCanCollect = config.dingdong_config.orchard_can_collect
-  let orchardCollect = config.dingdong_config.orchard_daily_collect
-  let orchardCollect2 = config.dingdong_config.orchard_normal_collect
-  let orchardEnterCheck = config.dingdong_config.orchard_check
-
-  this.orchard = function () {
-    if (this.isSubTaskExecuted(ORCHARD)) {
-      return
-    }
-    let orchard = this.captureAndCheckByImg(orchardEntry, '叮咚果园')
-    if (orchard) {
-      automator.click(orchard.centerX(), orchard.centerY())
-      sleep(2000)
-      if (!this.checkForTargetImg(orchardEnterCheck, '果园加载校验')) {
-        FloatyInstance.setFloatyText('未能正确打开果园')
-        automator.back()
-        sleep(2000)
-        return this.orchard()
-      }
-      let canCollect = this.captureAndCheckByImg(orchardCanCollect, '可领取')
-      if (canCollect && this.captureAndCheckByImg(orchardEnterCheck, '领水滴', null, true)) {
-        this.captureAndCheckByImg(orchardCollect, '每日签到', null, true)
-        sleep(2000)
-        while (!!this.captureAndCheckByImg(orchardCollect2, '任务签到', null, true)) {
-          sleep(2000)
-        }
-      }
-      this.setSubTaskExecuted(ORCHARD)
       automator.back()
+      sleep(1000)
     }
   }
 
