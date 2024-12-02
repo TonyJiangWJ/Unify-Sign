@@ -23,7 +23,8 @@ function SignRunner () {
   }
 
   this.checkAndCollect = function () {
-    let coinButton = widgetUtils.widgetGetOne('领淘金币')
+    let mineBtn = this.captureAndCheckByOcr('我的淘宝', '我的淘宝', [config.device_width / 2, config.device_height * 0.8, config.device_width / 2, config.device_height * 0.2], 1000, true, 3)
+    let coinButton = widgetUtils.widgetGetOne('淘金币')
     if (coinButton) {
       this.displayButtonAndClick(coinButton, '准备进入领淘金币')
       // 比较坑爹的 要等好久才会出现控件
@@ -33,7 +34,7 @@ function SignRunner () {
         sleep(1000)
         this.captureAndCheckByOcr('.*(明早7点可领|明日签到).*', '校验是否完成签到')
       }
-      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领|明日签到.*', null, true)
+      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领|\\d+.*明日签到.*', null, true)
       if (result.value === 1) {
         let signButton = result.target
         if (signButton) {
@@ -53,7 +54,7 @@ function SignRunner () {
         sleep(1000)
       }
       FloatyInstance.setFloatyText('准备查找是否有购物返')
-      let rewordByPurchase = widgetUtils.widgetGetOne('购物返')
+      let rewordByPurchase = widgetUtils.widgetGetOne('.*收货奖励.*')
       if (rewordByPurchase) {
         this.displayButtonAndClick(rewordByPurchase, '找到了购物返')
       } else {

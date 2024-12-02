@@ -41,14 +41,21 @@ function SignRunner () {
       if (rewardButton) {
         sleep(1000)
         if (!this.signedStore.getValue().executed) {
-          let signBtn = widgetUtils.widgetGetOne('签到')
+          let signBtn = widgetUtils.widgetGetOne('^签到$')
           if (signBtn) {
             boundsInfo = signBtn.bounds()
             FloatyInstance.setFloatyInfo({ x: boundsInfo.centerX(), y: boundsInfo.top - 10 }, '立即签到')
             sleep(500)
-            automator.clickCenter(signBtn)
+            if (!signBtn.click()) {
+              warnInfo(['无障碍点击失败，尝试坐标点击：{},{}', boundsInfo.centerX(), boundsInfo.top - 10])
+              automator.click(boundsInfo.centerX(), boundsInfo.top - 10)
+            }
             sleep(1000)
-            this.signedStore.updateStorageValue(value => value.executed = true)
+            if (widgetUtils.widgetCheck('明日签到', 500)) {
+              this.signedStore.updateStorageValue(value => value.executed = true)
+            } else {
+              warnInfo(['签到失败，下次执行时继续尝试'])
+            }
           } else {
             this.pushLog('未找到立即签到按钮')
             let signed = widgetUtils.widgetCheck('(今日已|明日)签到.*', 1500)
@@ -63,7 +70,11 @@ function SignRunner () {
           this.pushLog('今日已签到，不再检测是否已签到')
         }
         this.doHangTasks()
-        this.setExecuted()
+        if (!this.signedStore.getValue().executed) {
+          warnInfo(['今日签到判断为失败，延迟重试'])
+        } else {
+          this.setExecuted()
+        }
       } else {
         this.pushLog('未找到赚吃货豆按钮')
       }

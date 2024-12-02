@@ -7,9 +7,12 @@ let automator = singletonRequire('Automator')
 let commonFunctions = singletonRequire('CommonFunction')
 let FloatyInstance = singletonRequire('FloatyUtil')
 let logUtils = singletonRequire('LogUtils')
+let signFailedUtil = singletonRequire('SignFailedUtil')
+let YoloTrainHelper = singletonRequire('YoloTrainHelper')
 
 let BaseSignRunner = require('./BaseSignRunner.js')
 function BeanCollector () {
+  let _this = this
   this.initStorages = function () {
     this.dailyTaskStorage = this.createStoreOperator('jingdong_daily_task', { executed: false })
   }
@@ -45,59 +48,48 @@ function BeanCollector () {
   /**
    * 通过URL进入签到页面
    */
-  function openSignPage () {
-    let url = 'openapp.jdmobile://virtual?params=' + encodeURIComponent(buildParams())
-    // console.log('url:', url)
-    app.startActivity({
-      action: 'android.intent.action.VIEW',
-      data: url,
-      packageName: 'com.jingdong.app.mall'
-    })
-  }
-
-  function buildUrlParams () {
-    let params = [
-      'commontitle=no',
-      'transparent=1',
-      'has_native=0',
-      '_ts=' + new Date().getTime(),
-      'utm_user=plusmember',
-      'gx=RnAoFNvDvpxGHheQeSnihXDdWirjP_lfCFEYixY',
-      'gxd=RnAoy2FdYDaPyM5EqI1xXgjvwH1850Q',
-      'ad_od=share',
-      'utm_source=androidapp',
-      'utm_medium=appshare',
-      'utm_campaign=t_335139774',
-      'utm_term=Wxfriends'
-    ]
-    // console.log('url params:', JSON.stringify(params))
-    return params.join('&')
-  }
-
-
-  function buildParams () {
-    let params = {
-      "category": "jump",
-      "des": "m",
-      "sourceValue": "babel-act",
-      "sourceType": "babel",
-      "url": "https://pro.m.jd.com/mall/active/Md9FMi1pJXg2q7qc8CmE9FNYDS4/index.html?" + buildUrlParams(),
-      "M_sourceFrom": "H5",
-      "msf_type": "click",
-      "m_param": {
-        "usc": "androidapp",
-        "ucp": "t_335139774",
-        "umd": "appshare",
-        "utr": "Wxfriends",
-        "psn": "16958841235771574046910|1",
-        "psq": 1,
-        "mba_muid": "16958841235771574046910",
-        "mba_sid": "16958841235902758310971131663",
-        "std": "MO-J2011-1",
-        "event_id": "Babel_LeavepageExpo",
-      },
+  function openSignPage (retry) {
+    app.launchPackage(_package_name)
+    if (openMine()) {
+      let signEntry = widgetUtils.widgetGetOne('签到领豆')
+      if (signEntry) {
+        return _this.displayButtonAndClick(signEntry, '签到领豆')
+      }
+    } else {
+      if (retry) {
+        logUtils.errorInfo('无法找到 我的 无法执行签到任务')
+        return false
+      }
+      logUtils.warnInfo(['无法找到指定控件 我的'])
+      commonFunctions.killCurrentApp()
+      return openSignPage(true)
     }
-    return JSON.stringify(params)
+    return false
+  }
+
+  function openMine () {
+    if (commonFunctions.myCurrentPackage() != _package_name) {
+      app.launchPackage(_package_name)
+      _this.pushLog('打开京东APP')
+      sleep(2000)
+    }
+    if (widgetUtils.widgetWaiting('我的')) {
+      let myWidget = widgetUtils.widgetGetOne('我的')
+      automator.clickCenter(myWidget)
+      return true
+    }
+    return false
+  }
+
+  function openPlant () {
+    if (openMine()) {
+      sleep(2000)
+      let plantEntry = widgetUtils.widgetGetOne('种豆得豆')
+      return _this.displayButtonAndClick(plantEntry, '种豆得豆')
+    } else {
+      _this.pushLog('打开失败')
+    }
+    return false
   }
 
   function verifySignOpened (timeout) {
@@ -113,86 +105,135 @@ function BeanCollector () {
    * 执行签到
    * @returns 
    */
-  this.execCollectBean = function () {
-    this.checkBrowserResult()
+  this.execDailySign = function () {
     if (this.isSubTaskExecuted(SIGN)) {
-      return
+      return true
     }
-    this.pushLog('检查是否有签到按钮或已完成签到')
-    let signBtn = widgetUtils.widgetGetById('homeSignButton')
-    if (signBtn) {
-      if (/\+\d+/.test(signBtn.text())) {
-        this.displayButtonAndClick(signBtn, '签到按钮')
+
+    openSignPage()
+    this.awaitAndSkip()
+    if (verifySignOpened()) {
+      // 等待加载动画
+      sleep(1000)
+      this.closePopup()
+
+      this.checkBrowserResult()
+      this.pushLog('检查是否有签到按钮或已完成签到')
+      YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '签到页面', 'jingdong_sign', config.save_yolo_jingdong)
+      let signBtn = widgetUtils.widgetGetOne('签到领豆')
+      if (this.displayButtonAndClick(signBtn, '签到按钮')) {
         logUtils.debugInfo(['点击了签到按钮'])
-      } else {
-        logUtils.debugInfo(['当前已完成签到'])
-      }
-      clicked = true
-    } else {
-      let region = [0, 0, config.device_width, config.device_height * 0.3]
-      if (this.captureAndCheckByOcr('签到领豆', '领取按钮', region, null, true, 3)) {
-        this.pushLog('OCR找到签到按钮：签到领豆')
         clicked = true
       } else {
-        this.pushLog('未找到签到按钮 使用坐标点击')
-        automator.click(jingdongConfig.sign_posi_x, jingdongConfig.sign_posi_y)
-        clicked = true
+        let region = [0, 0, config.device_width, config.device_height * 0.5]
+        if (this.captureAndCheckByOcr('签到领豆', '领取按钮', region, null, true, 3)) {
+          this.pushLog('OCR找到签到按钮：签到领豆')
+          clicked = true
+        } else {
+          this.pushLog('未找到签到按钮 使用坐标点击')
+          warnInfo('坐标点击签到不稳定，界面容易变化，请时刻注意坐标是否准确，否则可能导致签到失败。如果坐标不正确请在设置中修改坐标', true)
+          FloatyInstance.setFloatyInfo({ x: jingdongConfig.sign_posi_x, y: jingdongConfig.sign_posi_y }, '坐标点击签到')
+          sleep(1000)
+          automator.click(jingdongConfig.sign_posi_x, jingdongConfig.sign_posi_y)
+          clicked = true
+        }
       }
-    }
 
-    if (clicked) {
-      // 二次校验是否正确签到
-      checking = widgetUtils.widgetCheck('.*连签\\d+天', 1000)
-      if (checking) {
-        this.setSubTaskExecuted(SIGN)
-        this.pushLog('二次校验，签到完成')
+      if (clicked) {
+        // 二次校验是否正确签到
+        checking = widgetUtils.widgetCheck('.*连签\\d+天', 1000)
+        YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '签到执行后', 'jingdong_sign', config.save_yolo_jingdong)
+        if (checking) {
+          this.setSubTaskExecuted(SIGN)
+          this.pushLog('二次校验，签到完成')
+        } else {
+          this.pushLog('二次校验失败，签到未完成')
+        }
       } else {
-        this.pushLog('二次校验失败，签到未完成')
+        YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '未找到签到按钮', 'jingdong_sign', config.save_yolo_jingdong)
       }
-    }
 
-    // 浏览商品
-    this.browserGoods()
+      // 浏览商品
+      this.browserGoods()
+
+      back()
+    }
   }
 
   this.browserGoods = function () {
-    let widget = widgetUtils.widgetGetOne('浏览\\d个商品.*(\\d/\\d)?')
+    if (this.checkBrowserDone()) {
+      this.browserGoodsDone = true
+      this.dailyTaskStorage.updateStorageValue(value => value.executed = true)
+      return
+    }
+    this.pushLog('查找是否存在 浏览\\d+个商品')
+    let widget = widgetUtils.widgetGetOne('浏览\\d个商品.*')
     if (widget) {
       let content = widget.text()
       logUtils.debugInfo(['浏览得豆控件信息：{}', content])
-      this.doBrowserGoods()
+      // 浏览7个商品得京豆 6/7
+      let regex = /浏览(\d+)个商品得京豆( (\d)\/\d)?/
+      let res = regex.exec(content)
+      let total = 7, executed = 0
+      if (res) {
+        total = res[1]
+        executed = res[3] || 0
+      }
+      YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '有每日任务', 'jingdong_sign_browser', config.save_yolo_jingdong)
+      this.doBrowserGoods(executed, total)
     } else {
-      this.pushLog('未找到浏览赚豆控件信息')
+      this.pushLog('未找到浏览赚豆控件信息, 直接执行逛一逛')
+      this.doBrowserGoods(0, 7)
     }
-    this.checkBrowserResult()
+    this.checkBrowserResult(true)
   }
 
-  this.checkBrowserResult = function () {
+  this.checkBrowserResult = function (recheck) {
     if (this.dailyTaskStorage.getValue().executed) {
       return
     }
+    // 回到最上面
+    recheck && automator.scrollUp()
     if (widgetUtils.widgetCheck('已领取奖励', 1000)) {
+      YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '每日浏览已完成', 'jingdong_sign_browser', config.save_yolo_jingdong)
       logUtils.debugInfo(['找到 已领取奖励 控件 今日浏览任务已完成'])
       this.browserGoodsDone = true
       this.dailyTaskStorage.updateStorageValue(value => value.executed = true)
       return
     }
-    let region = [0, config.device_height * 0.5, config.device_width, config.device_height * 0.5]
-    if (!this.captureAndCheckByOcr('^立即领$', '领取按钮', region, null, true, 3)) {
-      logUtils.warnInfo(['未找到立即领按钮'])
-      logUtils.debugInfo(['尝试通过控件信息查询+5领取按钮'])
-      let target = selector().boundsInside(config.device_width/2, config.device_height/2, config.device_width, config.device_height).textMatches('\\+\\d+').findOne(1000)
-      if (target) {
-        logUtils.debugInfo(['找到 +5 领取按钮: {}', { x: target.bounds().centerX(), y: target.bounds().centerY()}])
-        automator.clickCenter(target)
-      }
+
+    if (!recheck) {
+      this.browserGoods()
+    } else {
+      this.checkBrowserDone()
     }
-    
   }
 
-  this.doBrowserGoods = function (browsedIdx) {
+  this.checkBrowserDone = function () {
+    if (this.dailyTaskStorage.getValue().executed) {
+      logUtils.debugInfo('今日已完成逛一逛任务')
+      return
+    }
+    let region = [1133, 2424, 299, 288]
+    if (!this.captureAndCheckByOcr('^立即领$', '领取按钮', region, null, true, 2)) {
+      logUtils.warnInfo(['未找到立即领按钮'])
+      logUtils.debugInfo(['尝试通过控件信息查询+5领取按钮'])
+      let target = selector().boundsInside(config.device_width / 2, config.device_height / 2, config.device_width, config.device_height)
+        .textMatches('\\+\\d+').findOne(1000)
+      if (target) {
+        logUtils.debugInfo(['找到 +5 领取按钮: {}', { x: target.bounds().centerX(), y: target.bounds().centerY() }])
+        automator.clickCenter(target)
+        return true
+      }
+    } else {
+      return true
+    }
+    return false
+  }
+
+  this.doBrowserGoods = function (browsedIdx, total) {
     browsedIdx = browsedIdx || 0
-    if (browsedIdx >= 7) {
+    if (browsedIdx >= (total || 10)) {
       logUtils.debugInfo(['当前已浏览足够商品'])
       return
     }
@@ -203,12 +244,12 @@ function BeanCollector () {
     t.join(5000)
     if (goodsList && goodsList.length > 0) {
       logUtils.debugInfo(['找到可浏览商品数：{} 当前已浏览：{}', goodsList.length, browsedIdx])
-      this.pushLog('找到可浏览商品数'+goodsList.length+'当前浏览数：'+browsedIdx)
+      this.pushLog('找到可浏览商品数' + goodsList.length + '当前浏览数：' + browsedIdx)
       if (browsedIdx < goodsList.length - 1) {
         goodsList[browsedIdx].click()
         sleep(3000)
         automator.back()
-        this.doBrowserGoods(browsedIdx + 1)
+        this.doBrowserGoods(browsedIdx + 1, total)
         let widget = widgetUtils.widgetGetOne('浏览\\d个商品.*(\\d/\\d)?')
         if (widget) {
           let content = widget.text()
@@ -230,22 +271,9 @@ function BeanCollector () {
       return
     }
     debugInfo(['种豆得豆子任务信息{}', JSON.stringify(BEAN)])
-    let entryPoint = {
-      x: jingdongConfig.plant_bean_enter_x || this.cvt(1230), y: jingdongConfig.plant_bean_enter_y || this.cvt(440)
-    }
     if (!doubleCheck) {
       this.pushLog('通过控件查找种豆得豆入口')
-      let entryIcon = getEntries()
-      if (entryIcon && entryIcon.length >= 1) {
-        this.pushLog('通过控件方式找到了种豆得豆入口')
-        debugInfo(['find entries: {} {}', entryIcon.length, (entryIcon.map(entry => { let b = entry.bounds(); return [b.left, b.top, b.right, b.bottom] }))])
-        entryIcon = entryIcon[0]
-        this.displayButtonAndClick(entryIcon, '种豆得豆入口')
-      } else {
-        this.pushLog('未能通过坐标方式找到种豆得豆入口，使用坐标点击')
-        FloatyInstance.setFloatyInfo(entryPoint, '种豆得豆入口')
-        automator.click(entryPoint.x, entryPoint.y)
-      }
+      openPlant()
     }
 
     sleep(1000)
@@ -256,24 +284,31 @@ function BeanCollector () {
       }
       return this.execPlantBean(true)
     }
+    this.checkIfWeeklyReward()
+    YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '进入种豆得豆成功', 'jingdong_bean', config.save_yolo_jingdong)
     this.collectClickableBall()
-    let collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
-    if (collectCountdown) {
-      let countdown = collectCountdown.content
-      let result = /(\d+):(\d+):(\d+)/.exec(countdown)
-      let remain = parseInt(result[1]) * 60 + parseInt(result[2]) + 1
-      FloatyInstance.setFloatyInfo({
-        x: collectCountdown.target.bounds().centerX(),
-        y: collectCountdown.target.bounds().centerY()
-      }, '剩余时间：' + remain + '分')
-      sleep(1000)
+    if (!this.hadSetSchedule) {
+      let collectCountdown = widgetUtils.widgetGetOne('剩(\\d{2}:?){3}', null, true)
+      if (collectCountdown) {
+        let countdown = collectCountdown.content
+        let result = /(\d+):(\d+):(\d+)/.exec(countdown)
+        let remain = parseInt(result[1]) * 60 + parseInt(result[2]) + 1
+        FloatyInstance.setFloatyInfo({
+          x: collectCountdown.target.bounds().centerX(),
+          y: collectCountdown.target.bounds().centerY()
+        }, '剩余时间：' + remain + '分')
+        this.pushLog('检测到种豆得豆倒计时：' + remain + '分')
+        this.pushLog('控件信息：' + countdown)
+        sleep(1000)
 
-      if (remain >= jingdongConfig.plant_min_gaps || 120) {
-        let settingMinGaps = jingdongConfig.plant_min_gaps || 120
-        logUtils.logInfo(['倒计时：{} 超过{}分，设置{}分钟后来检查', remain, settingMinGaps, settingMinGaps])
-        remain = settingMinGaps
+        if (remain >= jingdongConfig.plant_min_gaps || 120) {
+          let settingMinGaps = jingdongConfig.plant_min_gaps || 120
+          logUtils.logInfo(['倒计时：{} 超过{}分，设置{}分钟后来检查', remain, settingMinGaps, settingMinGaps])
+          remain = settingMinGaps
+        }
+        this.createNextSchedule(this.taskCode + ':' + BEAN.taskCode, new Date().getTime() + remain * 60000)
+        this.hadSetSchedule = true
       }
-      this.createNextSchedule(this.taskCode + ':' + BEAN.taskCode, new Date().getTime() + remain * 60000)
     }
     // 完成日常任务
     if (this.doDailyTasks()) {
@@ -285,53 +320,61 @@ function BeanCollector () {
     this.setSubTaskExecuted(BEAN)
   }
 
-  this.doDailyTasks = function () {
+  // 领取每周京豆奖励
+  this.checkIfWeeklyReward = function () {
+    let reward = widgetUtils.widgetGetOne('收下京豆', 1000)
+    this.displayButtonAndClick(reward, '收下京豆')
+  }
+
+  this.doDailyTasks = function (skipDoubleSign) {
+    // todo optimize me: 这个方法的代码 又臭又长 需要优化一下
     this.pushLog('查证是否有更多任务')
     let execute = false
+    YoloTrainHelper.saveImage(commonFunctions.captureScreen(), '每日任务信息', 'jingdong_bean_task', config.save_yolo_jingdong)
     if (this.displayButtonAndClick(widgetUtils.widgetGetOne('更多任务', 1999), '查看更多任务')) {
       sleep(1000)
-      let hangBtn = widgetUtils.widgetGetOne('去逛逛', 1000)
-      let isFollowTask = false
-      try {
-        isFollowTask = hangBtn.parent().child(0).child(1).child(0).text() == '浏览店铺'
-      } catch (e) {
-        this.pushLog('验证是否为浏览店铺任务失败')
-        isFollowTask = false
+      if (!skipDoubleSign && this.isSubTaskExecuted(DOUBLE_SIGN)) {
+        // 双签任务完成后再执行 领取双签奖励
+        let goSign = widgetUtils.widgetGetOne('去签到', 1000)
+        if (this.displayButtonAndClick(goSign, '双签任务')) {
+          this.checkDoubleCheckDone()
+          return this.doDailyTasks(true)
+        }
       }
-      while (this.displayButtonAndClick(hangBtn, '去逛逛')) {
-        execute = true
-        if (isFollowTask) {
-          this.pushLog('自动浏览并关注店铺 代码不稳定 直接退出')
-          break
-          // this.pushLog('自动关注任务')
-          // let limit = 6
-          // while(limit--> 0 && this.displayButtonAndClick(widgetUtils.widgetGetOne('进店并关注', 1000), '关注')) {
-          //   this.pushLog('自动关注')
-          //   sleep(1000)
-          //   this.pushLog('查找取消关注')
-          //   sleep(1000)
-          //   this.displayButtonAndClick(widgetUtils.widgetGetOne('已关注', 3000), '取消关注')
-          //   automator.back()
-          // }
-        } else {
-          this.pushLog('自动浏览10秒')
-          sleep(10000)
-        }
-        if (commonFunctions.myCurrentPackage() != _package_name) {
-          this.pushLog('当前不在京东APP')
-          commonFunctions.minimize(commonFunctions.myCurrentPackage())
-        } else {
-          automator.back()
-        }
-        this.pushLog('查找去逛逛')
-        hangBtn = widgetUtils.widgetGetOne('去逛逛', 1000)
+      let hasNext = false
+      // boundsInside: x,y,right,bottom
+      let region = [0, 0.4 * config.device_height, config.device_width, config.device_height - 200 * config.scaleRate]
+      do {
+        hasNext = false
+        let hangBtn = widgetUtils.widgetGetOne('去逛逛', 3000, false, false, bounds => bounds.boundsInside(region[0], region[1], region[2], region[3]))
+        let isFollowTask = false
         try {
           isFollowTask = hangBtn.parent().child(0).child(1).child(0).text() == '浏览店铺'
         } catch (e) {
           this.pushLog('验证是否为浏览店铺任务失败')
           isFollowTask = false
         }
-      }
+        if (this.displayButtonAndClick(hangBtn, '去逛逛')) {
+          hasNext = true
+          if (isFollowTask) {
+            this.pushLog('自动浏览并关注店铺 代码不稳定 直接退出')
+            break
+          } else {
+            execute = true
+            let count = 10
+            do {
+              this.replaceLastLog('自动浏览' + count + '秒')
+              sleep(1000)
+            } while (--count > 0)
+          }
+          if (commonFunctions.myCurrentPackage() != _package_name) {
+            this.pushLog('当前不在京东APP')
+            commonFunctions.minimize(commonFunctions.myCurrentPackage())
+          } else {
+            automator.back()
+          }
+        }
+      } while (hasNext)
     }
     return execute
   }
@@ -357,6 +400,8 @@ function BeanCollector () {
     })
     clickableBalls.forEach(clickableBall => {
       this.displayButtonAndClick(clickableBall, '可收集' + (clickableBall ? clickableBall.text() : ''))
+      let checkDialog = widgetUtils.widgetGetOne('开心收下', 1000)
+      this.displayButtonAndClick(checkDialog, '开心收下')
       sleep(500)
     })
     if (clickableBalls.length > 0) {
@@ -375,64 +420,95 @@ function BeanCollector () {
     }
   }
 
-  function getEntries () {
-    let countDown = new java.util.concurrent.CountDownLatch(1)
-    let entryIcon = null
-    threads.start(function () {
-      entryIcon = selector().className('android.widget.Image').clickable().boundsInside(config.device_width / 2, 0, config.device_width, config.device_height * 0.5).untilFind()
-      countDown.countDown()
-    })
-    countDown.await(5, java.util.concurrent.TimeUnit.SECONDS)
-    return entryIcon
+  function getEntries (text) {
+    let target = widgetUtils.widgetGetOne(text)
+    if (target) {
+      if (target.parent().clickable()) {
+        return target.parent()
+      } else {
+        signFailedUtil.recordFailedWidgets(SIGN.taskCode, text)
+        if (target.bounds().left > config.device_width) {
+          debugInfo(['目标在屏幕外，进行滑动切换'])
+          automator.swipe(config.device_width - 5, target.bounds().centerY(), target.bounds().left - config.device_width / 2,
+            target.bounds().centerY(), 500)
+        }
+        target = widgetUtils.widgetGetOne(text)
+        warnInfo(['{} 父控件无法点击，使用坐标模拟点击：{},{}', text, target.bounds().left + 5, target.bounds().centerY()])
+        return {
+          click: () => {
+            automator.click(target.bounds().left + 5, target.bounds().centerY())
+          }
+        }
+      }
+    }
   }
 
   this.doubleSign = function (doubleCheck) {
     if (this.isSubTaskExecuted(DOUBLE_SIGN)) {
       return
     }
-    let entryPoint = {
-      x: jingdongConfig.double_sign_posi_x || this.cvt(1230), y: jingdongConfig.double_sign_posi_x || this.cvt(620)
-    }
-    if (!doubleCheck) {
-      let entryIcon = getEntries()
-      if (entryIcon && entryIcon.length > 1 && (entryIcon = entryIcon[1])) {
-        this.pushLog('通过控件方式找到了双签领豆入口')
-        this.displayButtonAndClick(entryIcon, '双签领豆入口')
+    if (openPlant()) {
+      let doubleSignEntry = widgetUtils.widgetGetOne('双签领豆')
+      if (this.displayButtonAndClick(doubleSignEntry, '双签领豆')) {
+        if (this.checkDoubleCheckDone()) {
+          this.setSubTaskExecuted(DOUBLE_SIGN)
+          back()
+          back()
+          back()
+          return
+        }
+        this.pushLog('等待自动打开京东金融签到界面')
+        sleep(5000)
+        this.pushLog('等待领金贴界面')
+        if (widgetUtils.widgetCheck('签到领金贴')) {
+          this.pushLog('进入领金贴界面')
+          sleep(1000)
+          this.pushLog('清除空间缓存')
+          auto.clearCache && auto.clearCache()
+          sleep(1000)
+          // todo 双签逻辑
+          let signBtn = widgetUtils.widgetGetOne('签到领金贴')
+          this.displayButtonAndClick(signBtn, '签到领金贴')
+        }
+        if (this.checkDoubleCheckDone()) {
+          this.setSubTaskExecuted(DOUBLE_SIGN)
+        }
+        sleep(1000)
+        this.pushLog('准备回到我的界面')
+        back()
+        back()
+        back()
       } else {
-        this.pushLog('未能通过坐标方式找到双签领豆入口，使用坐标点击')
-        FloatyInstance.setFloatyInfo(entryPoint, '双签领豆入口')
-        automator.click(entryPoint.x, entryPoint.y)
+        let moreTasks = widgetUtils.widgetGetOne('更多任务')
+        if (this.displayButtonAndClick(moreTasks)) {
+          sleep(1000)
+          doubleSignEntry = widgetUtils.widgetGetOne('双签领豆')
+          if (doubleSignEntry) {
+            makeSureInScreen(doubleSignEntry)
+            doubleSignEntry = widgetUtils.widgetGetOne('双签领豆')
+            this.displayButtonAndClick(doubleSignEntry)
+            sleep(1000)
+            if (this.checkDoubleCheckDone()) {
+              this.setSubTaskExecuted(DOUBLE_SIGN)
+            }
+            back()
+            back()
+            back()
+          }
+        }
       }
-
-      if (this.checkDoubleCheckDone()) {
-        this.setSubTaskExecuted(DOUBLE_SIGN)
-        backToSignPage()
-        return
-      }
-      this.pushLog('等待自动打开京东金融签到界面')
-      sleep(5000)
-      this.pushLog('等待领金贴界面')
-      if (widgetUtils.widgetCheck('签到领金贴')) {
-        this.pushLog('进入领金贴界面')
-        sleep(1000)
-        this.pushLog('清除空间缓存')
-        auto.clearCache && auto.clearCache()
-        sleep(1000)
-        // todo 双签逻辑
-        let signBtn = widgetUtils.widgetGetOne('签到领金贴')
-        this.displayButtonAndClick(signBtn, '签到领金贴')
-      }
-      if (this.checkDoubleCheckDone()) {
-        this.setSubTaskExecuted(DOUBLE_SIGN)
-      }
-      sleep(1000)
-      this.pushLog('准备回到签到界面')
-      backToSignPage()
     }
   }
 
+  function makeSureInScreen (target) {
+    _this.pushLog('底部坐标:' + target.bounds().bottom)
+    automator.gestureDown()
+    automator.gestureDown()
+  }
+
   this.checkDoubleCheckDone = function () {
-    let reward = widgetUtils.widgetGetOne('点击领奖|查看奖励', 1000)
+    this.pushLog('查找是否存在 点击领奖|查看奖励')
+    let reward = widgetUtils.widgetGetOne('点击领奖|查看奖励', 3000)
     return this.displayButtonAndClick(reward)
   }
 
@@ -448,21 +524,16 @@ function BeanCollector () {
   }
 
   this.exec = function () {
-    openSignPage()
-    this.awaitAndSkip()
-    if (verifySignOpened()) {
-      // 等待加载动画
-      sleep(1000)
-      this.closePopup()
-      // 京豆签到
-      this.execCollectBean()
-      // 双签领豆
-      this.doubleSign()
-      // 种豆得豆
-      this.execPlantBean()
+    let failed = false
+    // 京豆签到
+    this.execDailySign()
+    // 双签领豆
+    this.doubleSign()
+    // 种豆得豆
+    this.execPlantBean()
 
-      this.setExecuted()
-    } else {
+    this.setExecuted()
+    if (failed) {
       if (this.retryTime++ >= 3) {
         this.pushLog('重试次数过多，签到失败')
         commonFunctions.minimize(_package_name)

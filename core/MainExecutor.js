@@ -7,12 +7,16 @@ let signTaskService = singletonRequire('SignTaskService')
 let signTaskManager = singletonRequire('SignTaskManager')
 let logUtils = singletonRequire('LogUtils')
 let logFloaty = singletonRequire('LogFloaty')
+let NotificationHelper = singletonRequire('Notification')
 let formatDate = require('../lib/DateUtil.js')
+
 function MainExecutor () {
 
   this.exec = function () {
+    logFloaty.pushLog('准备执行所有任务')
     // let enabledSigns = config.supported_signs.filter(target => target.enabled)
     if (config.supported_signs && config.supported_signs.length > 0) {
+      commonFunctions.backHomeIfInVideoPackage()
       let restart = false
       let failedList = []
       config.supported_signs.forEach(target => {
@@ -55,6 +59,7 @@ function MainExecutor () {
         commonFunctions.setUpAutoStart(5)
         FloatyInstance.setFloatyText('有任务执行失败，设置五分钟后再试')
         logUtils.errorInfo(['执行失败的任务：{}', JSON.stringify(failedList)])
+        NotificationHelper.createNotification('有任务执行失败，五分钟后再试', '失败任务名称：' + failedList.join(','))
       } else {
         logFloaty.pushLog('所有签到任务完成')
         regenerateNextStartUp()
@@ -71,12 +76,15 @@ function MainExecutor () {
       if (nextExecuteTime <= now.getTime() + 5 * 60000) {
         logUtils.infoLog(['距离下一次运行时间【{}】小于五分钟，设置五分钟后执行', formatDate(new Date(nextExecuteTime))])
         commonFunctions.setUpAutoStart(5)
+        NotificationHelper.createNotification('下一次小于五分钟，设置五分钟后执行', '任务信息：' + scheduleList[0].taskCode)
       } else {
         logUtils.infoLog(['下一次运行时间【{}】', formatDate(new Date(nextExecuteTime))])
         commonFunctions.setUpAutoStart((nextExecuteTime - now.getTime()) / 60000)
+        NotificationHelper.createNotification('下一次运行时间：' + formatDate(new Date(nextExecuteTime)), '任务信息：' + scheduleList[0].taskCode)
       }
     } else {
       logUtils.infoLog('今日所有签到任务完成')
+      NotificationHelper.createNotification('今日所有签到任务完成', '今日所有签到任务完成')
     }
   }
 }

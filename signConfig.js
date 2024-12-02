@@ -11,8 +11,7 @@ module.exports = function (default_config, config, CONFIG_STORAGE_NAME) {
   binder.bindCustomSignConfig('dingdong', {}, [
     'mine_base64', 'fishpond_entry', 'fishpond_check', 'fishpond_can_collect',
     'fishpond_daily_collect', 'fishpond_normal_collect', 'fishpond_continuous_sign', 'fishpond_do_continuous_sign',
-    'fishpond_close_continuous_sign', 'fishpond_close', 'orchard_entry', 'orchard_can_collect', 'orchard_daily_collect',
-    'orchard_normal_collect', 'orchard_check', 'sign_and_get_points'
+    'fishpond_close_continuous_sign', 'fishpond_close', 'sign_and_get_points'
   ])
 
   // 微博

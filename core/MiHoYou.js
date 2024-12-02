@@ -51,7 +51,7 @@ function SignRunner () {
       sleep(3000)
       let regex = /第\s*(\d+)\s*天/
       if (widgetUtils.widgetWaiting('.*签到提醒.*')) {
-        FloatyInstance.setFloatyText('进入签到页面成功，准备截图查询是否有可签到内容')
+        FloatyInstance.setFloatyText('进入签到页面成功，准备通过控件查询是否有可签到内容')
         sleep(1000)
         let signBtn = selector().filter(node => node && node.indexInParent() == 0 && node.depth() == 14 && node.clickable() == false && node.className() == 'android.widget.Image').findOne(config.timeout_findOne)
         if (this.displayButton(signBtn, '签到按钮')) {
@@ -61,6 +61,7 @@ function SignRunner () {
           this.setExecuted()
         } else {
           FloatyInstance.setFloatyText('未能通过控件找到今日签到按钮')
+          this.pushLog('通过图片查找是否存在签到元素')
           sleep(1000)
           let screen = commonFunctions.checkCaptureScreenPermission()
           if (screen) {
