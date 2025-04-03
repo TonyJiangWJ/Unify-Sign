@@ -157,12 +157,20 @@ function BaseSignRunner () {
     checkingList = checkingList || ['\\s*允许\\s*', '\\s*跳过\\s*', '\\s*下次再说\\s*']
     checkingList.forEach(checkContent => {
       FloatyInstance.setFloatyText('准备查找是否存在' + checkContent)
-      let skip = WidgetUtils.widgetGetOne(checkContent, 3000)
+      let skip = WidgetUtils.widgetGetOne(checkContent, 2000)
       if (skip !== null) {
         automator.clickCenter(skip)
         sleep(1000)
       }
     })
+  }
+
+  this.openPackageAndSkipDialog = function (pkgName, checkingList, dialogChecking) {
+    app.launch(pkgName)
+    this.awaitAndSkip(checkingList)
+    if (typeof dialogChecking == 'function') {
+      dialogChecking()
+    }
   }
 
   /**
@@ -172,15 +180,17 @@ function BaseSignRunner () {
    * @param {string} desc 
    * @param {number} delay 
    */
-  this.displayButtonAndClick = function (button, desc, delay, clickByA11y) {
+  this.displayButtonAndClick = function (button, desc, delay, clickByA11y, regeneratePosition) {
     this.displayButton(button, desc, delay)
     if (button) {
       if (clickByA11y && typeof button.clickable !== 'undefined' && button.clickable()) {
         button.click()
+      } else if (typeof regeneratePosition == 'function') {
+        automator.click.apply(automator, regeneratePosition(button.bounds()))
       } else if (automator.checkCenterClickable(button)) {
         automator.clickCenter(button)
       } else {
-        logUtils.errorInfo(['按钮位置不正确无法点击，请检查代码'], true)
+        logUtils.errorInfo(['按钮位置不正确无法点击，请检查代码:{} {}', desc, JSON.stringify(button.bounds())], true)
         return false
       }
     }
@@ -255,6 +265,7 @@ function BaseSignRunner () {
   this.captureAndCheckByOcr = function (regex, content, region, delay, clickIt, loop) {
     if (!localOcrUtil.enabled) {
       logUtils.warnInfo('当前AutoJS不支持OCR')
+      this.pushLog('当前AutoJS不支持OCR')
       return null
     }
     content = content || regex
@@ -286,6 +297,7 @@ function BaseSignRunner () {
         return this.wrapOcrPointWithBounds(collect)
       } else if (loop-- > 1) {
         sleep(delay)
+        this.pushLog('未找到目标：' + content + ' 剩余次数：' + loop)
         logUtils.debugInfo(['未找到目标「{}」进行下一次查找，剩余尝试次数：{}', content, loop])
         logUtils.debugForDev(['图片数据：[data:image/png;base64,{}]', images.toBase64(images.clip(screen, config.device_width / 2, config.device_height * 0.7, config.device_width - config.device_width / 2, config.device_height - config.device_height * 0.7))])
         return this.captureAndCheckByOcr(regex, content, region, delay, clickIt, loop)
@@ -524,6 +536,32 @@ function BaseSignRunner () {
 
   this.cvt = function (position) {
     return parseInt(config.scaleRate * position)
+  }
+
+  this.ensureTargetInVisible = function (target, visibleBounds, reget, limit) {
+    if (!target) {
+      return null
+    }
+    limit = limit || 0
+    if (limit > 5) {
+      debugInfo(['检测次数过多 直接返回控件{}', b])
+      return target
+    }
+    let b = target.bounds()
+    debugInfo(['控件位置：{} 可见范围：{}', b, visibleBounds])
+    if (b.top < visibleBounds[1]) {
+      debugInfo(['在顶部 需要向上滑动(手势向下): {} => {}', visibleBounds[1] + 100, visibleBounds[1] + 100 + visibleBounds[1] - b.top])
+      automator.gestureUp(visibleBounds[1] + 100, visibleBounds[1] + 100 + visibleBounds[1] - b.top, 500)
+    } else if (b.bottom > visibleBounds[3]) {
+      debugInfo(['在底部 需要向下滑动(手势向上):{} => {}', visibleBounds[3] - 200, visibleBounds[3] - 200 - (b.bottom - visibleBounds[3])])
+      automator.gestureDown(visibleBounds[3] - 200, visibleBounds[3] - 200 - (b.bottom - visibleBounds[3]), 500)
+    } else {
+      debugInfo(['控件位置在可见范围内：{}', b])
+      return target
+    }
+    auto.clearCache && auto.clearCache()
+    sleep(500)
+    return this.ensureTargetInVisible(reget(), visibleBounds, reget, limit + 1)
   }
 }
 /**

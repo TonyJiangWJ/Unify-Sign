@@ -198,7 +198,7 @@ function SignRunner () {
         FloatyInstance.setFloatyText('进入积分界面成功')
         sleep(1000)
         let signContentReg = /^(立即|今日)?签到$/
-        let findType = widgetUtils.alternativeWidget(signContentReg, '今日已签到.*')
+        let findType = widgetUtils.alternativeWidget(signContentReg, '.*(今日已签到|明天签到可).*')
         if (findType === 1) {
           // 先尝试图片识别，因为控件可能位置不正确
           if(!this.captureAndCheckByImg(sign_and_get_points, signContentReg, null, true)) {

@@ -1,7 +1,7 @@
 /*
  * @Author: TonyJiangWJ
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2024-11-21 15:48:49
+ * @Last Modified time: 2025-01-25 10:03:21
  * @Description: 
  */
 require('./modules/init_if_needed.js')(runtime, this)
@@ -131,6 +131,8 @@ if (!FloatyInstance.init()) {
 FloatyInstance.enableLog()
 // 自动设置刘海偏移量
 commonFunctions.autoSetUpBangOffset()
+// 开启websocket监控
+require('./lib/WebsocketCaptureHijack.js')()
 /************************
  * 主程序
  ***********************/

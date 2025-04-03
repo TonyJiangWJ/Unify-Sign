@@ -99,9 +99,15 @@ function SignRunner () {
     if (this.doSign()) {
       // 执行成功后触发 标记当前任务已完成 失败了请勿调用
       this.setExecuted()
+    } else {
+      // 执行失败 可能存在无法获取控件的弹窗
+      automator.back()
+      if (widgetUtils.widgetGetOne('你确定要退出华住会.*', 1000)) {
+        this.displayButtonAndClick(widgetUtils.widgetGetOne('确定', 2000), '确定')
+      }
     }
     // 直接关闭
-    commonFunctions.killCurrentApp()
+    commonFunctions.minimize(_package_name, () => this.displayButtonAndClick(widgetUtils.widgetGetOne('确定', 1000), '确定'))
   }
 
 }

@@ -60,25 +60,17 @@ function SignRunner () {
       packageName: _package_name
     })
     FloatyInstance.setFloatyText('查找 商家积分 控件')
-    sleep(500)
+    sleep(1500)
     let creditEntry = widgetUtils.widgetGetOne('商家积分')
     if (this.displayButtonAndClick(creditEntry, '商家积分')) {
+      this.pushLog('检查是否有可领取积分')
+      this.displayButtonAndClick(widgetUtils.widgetGetOne('一键领取', 2000))
       creditEntry = widgetUtils.widgetGetOne('每日签到')
       if (this.displayButtonAndClick(creditEntry, '每日签到')) {
         return true
       }
     }
 
-    // FloatyInstance.setFloatyText('查找 商家服务 控件')
-    // let entry = widgetUtils.widgetGetOne('商家服务')
-    // if (this.displayButtonAndClick(entry, '商家服务')) {
-    //   FloatyInstance.setFloatyText('查找 商家积分 控件')
-    //   sleep(500)
-    //   let creditEntry = widgetUtils.widgetGetOne('商家积分')
-    //   if (this.displayButtonAndClick(creditEntry, '商家积分')) {
-    //     return true
-    //   }
-    // }
     return false
   }
 
@@ -89,7 +81,7 @@ function SignRunner () {
     } else {
       FloatyInstance.setFloatyText('未找到已领取按钮')
     }
-    
+
   }
 
   /**
@@ -127,24 +119,109 @@ function SignRunner () {
       logUtils.errorInfo(['执行超过十次，估计死循环了 并没有那么多任务可以执行'])
       return
     }
-    let startY = config.device_height - config.device_height * 0.15
-    let endY = startY - config.device_height * 0.3
-    
-    let browserBtn = this.captureAndCheckByOcr('去浏览|去完成')
-    if (this.displayButtonAndClick(browserBtn, '去浏览')) {
-      widgetUtils.widgetWaiting('.*浏览15秒.*')
-      let limit = 16
-      while (limit-- > 0 && !widgetUtils.widgetCheck('任务已完成', 1000)) {
-        automator.gestureDown(startY, endY)
-        FloatyInstance.setFloatyText('继续等待' + limit + '秒')
-        sleep(100)
-      }
-      automator.back()
+    sleep(3000)
+    let targetButtons = widgetUtils.widgetGetAll('去浏览|去完成', 3000)
+    let task = getFirstTaskInfo.call(this, targetButtons)
+    if (task) {
+      task.execute.call(this)
       sleep(1000)
-      this.doTask(tryTime + 1)
+      if (!widgetUtils.widgetGetOne('赚更多积分', 2000)) {
+        // 重新打开签到页面
+        this.openCreditsPage()
+      }
+      this.doTask(tryTime - 1)
     }
-    FloatyInstance.setFloatyText('没有更多浏览任务了')
   }
+
+  function getFirstTaskInfo (btnList) {
+    if (!btnList || btnList.length < 0) {
+      return null
+    }
+    let taskInfos = btnList.map(btn => {
+      let title = btn.parent().child(btn.indexInParent() - 3).text()
+      return { title: title, btn: btn }
+    })
+    const taskDefine = [
+      () => buildTask((taskInfo) => /商品橱窗/.test(taskInfo.title), function () {
+        let startY = config.device_height - config.device_height * 0.15
+        let endY = startY - config.device_height * 0.3
+        let limit = 16
+
+        this.replaceLastLog('等待任务完成16s')
+        while (limit-- > 0 && !widgetUtils.widgetGetOne('任务已完成', 1000)) {
+          automator.gestureDown(startY, endY)
+          this.replaceLastLog('等待任务完成' + limit + 's')
+        }
+        automator.back()
+      }),
+      () => buildTask((taskInfo) => /视频广告/.test(taskInfo.title), function () {
+        let limit = 32
+        this.pushLog('等待' + limit + 's')
+        while (limit-- > 0) {
+          this.replaceLastLog('等待' + limit + 's')
+          sleep(1000)
+        }
+        this.pushLog('等待3秒 确保完成')
+        sleep(3000)
+        automator.back()
+      }),
+      () => buildTask((taskInfo) => /逛0元下单好物|红包会场/.test(taskInfo.title),
+        function () {
+          let startY = config.device_height - config.device_height * 0.15
+          let endY = startY - config.device_height * 0.3
+          let limit = 32
+          this.replaceLastLog('等待任务完成32s')
+          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 1000) || limit > 15)) {
+            automator.gestureDown(startY, endY)
+            this.replaceLastLog('等待任务完成' + limit + 's')
+          }
+          automator.back()
+        }
+      ),
+      () => buildTask((taskInfo) => /借呗|逛信用卡|红包集卡抽|芝麻攒粒攻略|逛一逛领优惠|网商贷/.test(taskInfo.title),
+        function () {
+          let limit = 32
+          this.replaceLastLog('等待任务完成32s')
+          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 1000) || limit > 15)) {
+            this.replaceLastLog('等待任务完成' + limit + 's')
+            sleep(1000)
+          }
+          automator.back()
+        }
+      )
+    ]
+    for (let i = 0; i < taskDefine.length; i++) {
+      let taskExecutor = taskDefine[i]()
+      if (taskExecutor)
+        return {
+          execute: function () {
+            let taskInfo = taskExecutor.taskInfo
+            this.pushLog('执行任务：' + taskInfo.title)
+            let target = this.ensureTargetInVisible(taskInfo.btn, [0, config.device_height * 0.2, config.device_width, config.device_height * 0.8],
+              () => widgetUtils.widgetGetOne(taskInfo.title, 2000))
+            if (this.displayButtonAndClick(target, '去完成')) {
+              sleep(1000)
+              taskExecutor.executor.call(this)
+            }
+          }
+        }
+    }
+
+    this.pushLog('当前任务列表均未定义：' + JSON.stringify(taskInfos.map(taskInfo => taskInfo.title)))
+
+    return null
+    function buildTask (filter, executor) {
+      let results = taskInfos.filter(taskInfo => filter(taskInfo))
+      if (results.length > 0) {
+        return {
+          taskInfo: results[0],
+          executor: executor,
+        }
+      }
+      return null
+    }
+  }
+
 }
 
 SignRunner.prototype = Object.create(BaseSignRunner.prototype)

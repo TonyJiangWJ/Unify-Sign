@@ -59,7 +59,7 @@ function MainExecutor () {
         commonFunctions.setUpAutoStart(5)
         FloatyInstance.setFloatyText('有任务执行失败，设置五分钟后再试')
         logUtils.errorInfo(['执行失败的任务：{}', JSON.stringify(failedList)])
-        NotificationHelper.createNotification('有任务执行失败，五分钟后再试', '失败任务名称：' + failedList.join(','))
+        NotificationHelper.createNotification('有任务执行失败，五分钟后再试', '失败任务名称：' + failedList.join(','), 'taskFailed')
       } else {
         logFloaty.pushLog('所有签到任务完成')
         regenerateNextStartUp()

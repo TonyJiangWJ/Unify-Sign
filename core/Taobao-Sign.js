@@ -1,3 +1,4 @@
+let { config } = require('../config.js')(runtime, this)
 let singletonRequire = require('../lib/SingletonRequirer.js')(runtime, this)
 let commonFunctions = singletonRequire('CommonFunction')
 let widgetUtils = singletonRequire('WidgetUtils')
@@ -22,6 +23,8 @@ function SignRunner () {
   this.finishThisLoop = false
   this.browseAdCount = 0
   this.created_schedule = false
+  this.startTime = null
+  this.reopenTime = 0
 
   this.launchTaobao = function () {
     app.launch(_package_name)
@@ -44,7 +47,11 @@ function SignRunner () {
     this.processGastureIfNeed()
   }
 
-  this.checkAndCollect = function () {
+  this.openSignPage = function () {
+    if (new Date().getTime() - this.startTime > 1000 * 10 * 60) {
+      this.pushErrorLog('运行超时，需要退出当前签到')
+      return false
+    }
     this.processGastureIfNeed()
     let signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('红包签到'), '找到了签到按钮')
     if (!signBtn) {
@@ -52,12 +59,23 @@ function SignRunner () {
       if (this.captureAndCheckByOcr('我的淘宝', '我的淘宝', [config.device_width / 2, config.device_height * 0.8, config.device_width / 2, config.device_height * 0.2], 1000, true, 3)) {
         signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('签到领现金'), '找到了签领现金按钮')
       }
-    }
+    } 
     if (signBtn) {
-      widgetUtils.widgetWaiting('去赚元宝', null, 2000)
+      if (widgetUtils.widgetCheck('我的心愿', 3000)) {
+        this.pushLog('当前是淘宝活动界面，再次寻找入口')
+        signBtn = this.displayButtonAndClick(widgetUtils.widgetGetOne('红包签到'), '找到了红包签到按钮')
+      }
+    }
+    return !!signBtn
+  }
+
+  this.checkAndCollect = function () {
+    if (this.openSignPage()) {
+      widgetUtils.widgetWaiting('赚元宝', null, 2000)
       sleep(1000)
       this.processGastureIfNeed()
       this.checkDailySign()
+      this.checkCountdownBtn(true)
       this.browseAds()
       if (this.signed) {
         this.setExecuted()
@@ -76,7 +94,7 @@ function SignRunner () {
         }
       }
     } else {
-      logUtils.warnInfo(['未找到签到按钮'])
+      logUtils.warnInfo(['未能打开签到界面'])
     }
   }
 
@@ -164,7 +182,7 @@ function SignRunner () {
       this.finishThisLoop = true
       return
     }
-    FloatyInstance.setFloatyText('查找是否存在 点击领取')
+    FloatyInstance.setFloatyText('查找是否存在 click collect')
     let awardCountdown = findByWidgetOrOcr('点击.*取', [config.device_width / 2, config.device_height * 0.1, config.device_width, config.device_height * 0.6])
     if (awardCountdown) {
       this.displayButton(awardCountdown, '可以领')
@@ -254,63 +272,194 @@ function SignRunner () {
     return false
   }
 
-  this.browseAds = function () {
+  this.browseAds = function (memo) {
+    memo = memo || {}
     sleep(1000)
-    this.processGastureIfNeed()
-    if (storageHelper.isHangTaskDone() || storageHelper.isHangTooMuch()) {
-      this.checkCountdownBtn(true)
+    let entry = widgetUtils.widgetGetOne('赚元宝', 2000)
+    if (this.displayButtonAndClick(entry, '赚元宝')) {
+      sleep(1000)
+      let taskList = [
+        hangBrowse, doSearch, watchVideo,
+        browseGoods, dailyMoney, hangSeckill, orderWithdraw, hangSaveMoney,
+        // 构建通用方法
+        this.buildCommonMemoTask('购物返现金', '购物返.*现金.*0/1.*', 'purchaseWithdraw')
+      ]
+      // 遍历所有可操作任务
+      for (let i = 0; i < taskList.length; i++) {
+        if (taskList[i].apply(this, [memo])) {
+          return this.browseAds(memo)
+        }
+      }
+      this.pushLog('已完成所有可完成任务')
+      this.displayButtonAndClick(className('android.widget.Button').textContains('关闭').findOne(1000))
     } else {
-      let moreCoins = widgetUtils.widgetGetOne('\\+\\d{4,}', null, true, null, m => m.boundsInside(0, 0, config.device_width / 2, config.device_height * 0.5))
-      if (moreCoins) {
-        this.checkCountdownBtn()
-        if (this.finishThisLoop) {
-          return
-        }
-        if (this.browseAdCount > 5) {
-          logUtils.errorInfo(['当前浏览广告次数过多，可能存在异常，结束本次执行的广告浏览'])
-          this.finishThisLoop = true
-          return
-        }
-        this.displayButtonAndClick(moreCoins.target, moreCoins.content)
-        sleep(1000)
-        sleep(1000)
-        let hangout = widgetUtils.widgetGetOne('去逛逛')
-        let noMore = false
-        if (this.displayButtonAndClick(hangout, '去逛逛')) {
-          sleep(1000)
-          this.doBrowsing()
-          this.browseAdCount++
-          sleep(1000)
-          automator.back()
-        } else {
-          logUtils.warnInfo(['未找到去逛逛 可能已经完成了'])
-          let searchBtn = widgetUtils.widgetGetOne('去搜索')
-          if (!this.search_no_more && this.displayButtonAndClick(searchBtn, '去搜索')) {
-            this.doSearching()
-          } else {
-            let finished = widgetUtils.widgetGetOne('已完成')
-            // 点进去 然后返回
-            if (this.displayButtonAndClick(finished, '已完成')) {
-              noMore = true
-              sleep(1000)
-              automator.back()
-              storageHelper.setHangTaskDone()
-            }
-          }
-        }
-        sleep(1000)
-        if (this.closeDialogIfPossible()) {
-          logUtils.debugInfo(['已经通过弹窗浏览广告'])
-        }
-        this.checkCountdownBtn(true)
-        sleep(1000)
-        if (!noMore && !this.finishThisLoop) {
-          this.browseAds()
-        }
+      this.reopenTime += 1
+      if (this.reopenTime > 5) {
+        this.pushErrorLog('重新打开签到界面失败多次，退出执行')
+      }
+      this.pushLog('无法找到赚元宝 可能界面不正常 重新打开')
+      commonFunctions.minimize()
+      this.launchTaobao()
+      if (this.openSignPage()) {
+        this.browseAds(memo)
       } else {
-        this.checkCountdownBtn(true)
+        this.pushErrorLog('重新打开签到界面失败，退出执行')
       }
     }
+  }
+
+  this.wrapLoopTask = function (memo, desc, callback, key) {
+    if (memo[key]) {
+      return false
+    }
+    this.pushLog('查找是否存在任务：' + desc)
+    if (callback()) {
+      return true
+    }
+    memo[key] = true
+    this.pushLog('未找到任务：' + desc)
+    return false
+  }
+
+  this.buildCommonMemoTask = function (desc, title, key) {
+    return (memo) => this.wrapLoopTask(memo, desc, () => this.buildCommonWaitingTask(title), key)
+  }
+
+  function clickTargetWithA11y (container, targetGetter) {
+    if (!container) {
+      return false
+    }
+    try {
+      let target = targetGetter()
+      if (target) {
+        return target.click()
+      } else {
+        logUtils.warnInfo(['目标控件不存在'])
+        return false
+      }
+    } catch (e) {
+      logUtils.errorInfo(['提取目标控件异常' + e])
+      return false
+    }
+  }
+
+  this.buildCommonWaitingTask = function (title) {
+    let entryTitle = widgetUtils.widgetGetOne(title, 2000)
+    if (clickTargetWithA11y(entryTitle, () => entryTitle.parent().parent().child(1))) {
+      let limit = 32
+      while (limit-- > 0) {
+        if (widgetUtils.widgetGetOne('任务完成', 1000)) {
+          this.pushLog('找到了任务完成')
+          break
+        }
+        this.replaceLastLog('等待任务完成' + (limit) + 's')
+      }
+      automator.back()
+      return true
+    }
+    return false
+  }
+
+  function hangBrowse (memo) {
+    return this.wrapLoopTask(memo, '去逛逛', () => {
+      let hangout = widgetUtils.widgetGetOne('去逛逛')
+      if (this.displayButtonAndClick(hangout, '去逛逛')) {
+        sleep(1000)
+        this.doBrowsing()
+        this.browseAdCount++
+        sleep(1000)
+        automator.back()
+        return true
+      }
+      return false
+    }, 'hangDone')
+  }
+
+  function doSearch (memo) {
+    return this.wrapLoopTask(memo, '去搜索', () => {
+      let searchBtn = widgetUtils.widgetGetOne('去搜索')
+      if (this.displayButtonAndClick(searchBtn, '去搜索')) {
+        sleep(1000)
+        let root = widgetUtils.widgetGetOne('搜索发现', 1000)
+        if (root) {
+          let firstContainer = root.parent()
+          let firstTarget = widgetUtils.subWidgetGetOne(firstContainer, '.+', 2000, false, matcher => {
+            return matcher.clickable().filter(node => {
+              let content = node.desc() || node.text()
+              return content.indexOf('搜索发现') < 0
+            })
+          })
+          if (!this.displayButtonAndClick(firstTarget, '第一个搜索词')) {
+            back()
+            this.pushErrorLog('查找搜索词失败')
+            if (!widgetUtils.widgetGetOne('赚元宝', 2000)) {
+              back()
+            }
+            return false
+          } else {
+            logUtils.debugInfo(['控件内容：{}', firstTarget.desc() || firstTarget.text()])
+          }
+          logUtils.debugInfo('点击了第一个搜索词')
+          if (widgetUtils.widgetGetOne('浏览本页面.*', 1000)) {
+            logUtils.debugInfo(['当前控件信息检测为浏览本页面直到控件消失结束'])
+            this.doBrowsing('浏览本页面.*')
+          } else {
+            logUtils.debugInfo(['当前控件信息检测为浏览本页面直到出现任务已完成'])
+            let limit = 15
+            while (!widgetUtils.widgetGetOne('.*任务已完成.*', 1000) && limit-- > 0) {
+              automator.gestureDown()
+              sleep(1000)
+            }
+          }
+          logUtils.debugInfo('任务完成')
+          back()
+          sleep(100)
+          back()
+          return true
+        } else {
+          back()
+          this.pushLog('无法找到 搜索发现 无法执行搜索任务')
+          logUtils.warnInfo('未能找到 搜索发现')
+          if (!widgetUtils.widgetGetOne('赚元宝', 2000)) {
+            back()
+          }
+          return false
+        }
+      }
+    }, 'searchDone')
+  }
+
+  function watchVideo (memo) {
+    return this.wrapLoopTask(memo, '好物沉浸看', () => this.buildCommonWaitingTask('好物沉浸看.*0/1.*'), 'watchVideoAdDone')
+  }
+
+  function browseGoods (memo) {
+    return this.wrapLoopTask(memo, '逛精选好物', () => {
+      let entryTitle = widgetUtils.widgetGetOne('逛精选好货.*[012]/3.*', 2009)
+      if (this.displayButtonAndClick(entryTitle)) {
+        this.doBrowsing('滑动浏览.*')
+        sleep(1000)
+        automator.back()
+        return true
+      }
+      return false
+    }, 'browseGoodsDone')
+  }
+
+  function dailyMoney (memo) {
+    return this.wrapLoopTask(memo, '天天领钱', () => this.buildCommonWaitingTask('去天天领钱.*0/1.*'), 'dailyMoney')
+  }
+
+  function hangSeckill (memo) {
+    return this.wrapLoopTask(memo, '逛淘宝秒杀', () => this.buildCommonWaitingTask('逛淘宝秒杀.*0/1.*'), 'hangSeckill')
+  }
+
+  function orderWithdraw (memo) {
+    return this.wrapLoopTask(memo, '下单立即提现', () => this.buildCommonWaitingTask('下单立即提现.*0/1.*'), 'orderWithdraw')
+  }
+
+  function hangSaveMoney (memo) {
+    return this.wrapLoopTask(memo, '逛省钱包', () => this.buildCommonWaitingTask('逛省钱包.*0/1.*'), 'hangSaveMoney')
   }
 
   this.doSearching = function () {
@@ -328,6 +477,7 @@ function SignRunner () {
         sleep(1000)
         this.doBrowsing('浏览本页面.*')
         sleep(1000)
+        automator.back()
       } else {
         FloatyInstance.setFloatyText('未找到推荐商品')
         logUtils.errorInfo(['未找到推荐商品控件，自动搜索失败'])
@@ -340,13 +490,13 @@ function SignRunner () {
     automator.back()
   }
 
-  this.doBrowsing = function (content) {
+  this.doBrowsing = function (content, timeoutSeconds) {
     let startY = config.device_height - config.device_height * 0.15
     let endY = startY - config.device_height * 0.3
     automator.gestureDown(startY, endY)
     let start = new Date().getTime()
     let cost = null
-    while ((cost = new Date().getTime() - start) < 16000 || widgetUtils.widgetWaiting(content || '滑动浏览', null, 5000) && cost < 40000) {
+    while ((cost = new Date().getTime() - start) < (timeoutSeconds || 16) * 1000 || widgetUtils.widgetWaiting(content || '滑动浏览', null, 5000) && cost < 40000) {
       sleep(4000)
       automator.gestureDown(startY, endY)
     }
@@ -373,6 +523,7 @@ function SignRunner () {
   }
 
   this.exec = function () {
+    this.startTime = new Date().getTime()
     this.launchTaobao(_package_name)
     sleep(1000)
     this.checkAndCollect()
