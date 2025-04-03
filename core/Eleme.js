@@ -41,31 +41,7 @@ function SignRunner () {
       if (rewardButton) {
         sleep(1000)
         if (!this.signedStore.getValue().executed) {
-          let signBtn = widgetUtils.widgetGetOne('^签到$')
-          if (signBtn) {
-            boundsInfo = signBtn.bounds()
-            FloatyInstance.setFloatyInfo({ x: boundsInfo.centerX(), y: boundsInfo.top - 10 }, '立即签到')
-            sleep(500)
-            if (!signBtn.click()) {
-              warnInfo(['无障碍点击失败，尝试坐标点击：{},{}', boundsInfo.centerX(), boundsInfo.top - 10])
-              automator.click(boundsInfo.centerX(), boundsInfo.top - 10)
-            }
-            sleep(1000)
-            if (widgetUtils.widgetCheck('明日签到', 500)) {
-              this.signedStore.updateStorageValue(value => value.executed = true)
-            } else {
-              warnInfo(['签到失败，下次执行时继续尝试'])
-            }
-          } else {
-            this.pushLog('未找到立即签到按钮')
-            let signed = widgetUtils.widgetCheck('(今日已|明日)签到.*', 1500)
-            if (signed) {
-              this.pushLog('今日已签到')
-              this.signedStore.updateStorageValue(value => value.executed = true)
-            } else {
-              this.pushLog('无法确定今日是否成功签到')
-            }
-          }
+          this.doDailySign()
         } else {
           this.pushLog('今日已签到，不再检测是否已签到')
         }
@@ -85,6 +61,28 @@ function SignRunner () {
     commonFunctions.minimize()
   }
 
+  this.doDailySign = function () {
+    if (this.captureAndCheckByOcr('^签到$', '签到', null, null, true)) {
+      sleep(1000) // 等待控件稳定 重新获取一遍
+      if (this.captureAndCheckByOcr('明日签到', null, null, null, false)) {
+        this.pushLog('找到明日签到 设置今日签到成功')
+        this.signedStore.updateStorageValue(value => value.executed = true)
+      }
+    } else {
+      this.pushLog('未找到立即签到按钮')
+      if (this.captureAndCheckByOcr('^连签$', '连签', null, null, true)) {
+        this.pushLog('点击了连签')
+        sleep(1000)
+        if (this.captureAndCheckByOcr('已连续签到.*', '已连续签到', null, null, false)) {
+          this.pushLog('打开了抽屉 设置今日签到成功')
+          this.signedStore.updateStorageValue(value => value.executed = true)
+        }
+      } else {
+        this.pushLog('无法确定今日是否成功签到')
+      }
+    }
+  }
+
   /**
    * 打开任务抽屉界面
    * 
@@ -92,44 +90,16 @@ function SignRunner () {
    * @returns 
    */
   this.openDrawer = function (reopen) {
-    let browseAndReward = widgetUtils.widgetGetOne('连续签到\\d天')
-    if (!browseAndReward) {
-      browseAndReward = widgetUtils.widgetGetOne('领豆赚豆按钮')
-    }
-    if (!browseAndReward) {
-      warnInfo(['未找到领豆赚豆按钮，尝试控件信息识别'], true)
-      browseAndReward = selector().className('android.view.View').clickable(true).filter(v => {
-        let bdInfo = v.bounds()
-        return bdInfo.width() > config.device_width / 2 && bdInfo.width() / bdInfo.height() > 2 && bdInfo.left > 0
-      }).findOne(config.timeout_findOne)
-    }
-    if (!this.displayButtonAndClick(browseAndReward, '找到了领豆赚豆按钮', null, true)) {
-      this.pushLog('未找到领豆赚豆按钮')
-      // 自动设置五分钟后继续
-      this.createNextSchedule(this.taskCode)
-      return false
-    }
-    let checkLimit = 5
-    while (!widgetUtils.widgetWaiting('任务记录|展开更多', 1000) && checkLimit-- > 0) {
-      this.displayButtonAndClick(browseAndReward, '重新点击领豆赚豆按钮' + checkLimit, null, true)
-      sleep(1000)
-    }
 
-    sleep(1000)
-    let anchorWidget = widgetUtils.widgetGetOne('浏览赚豆')
-    if (anchorWidget) {
-      let point = { x: anchorWidget.bounds().centerX(), y: anchorWidget.bounds().centerY() }
-      FloatyInstance.setFloatyInfo(point, '浏览赚豆')
-      // 向上滑动
-      automator.swipe(point.x, point.y > config.device_height * 0.8 ? config.device_height * 0.8 : point.y, point.x, config.device_height / 2, 800)
+    if (this.captureAndCheckByOcr('连签|做任务.*', null, null, null, true)) {
+      this.pushLog('点击打开抽屉成功')
       return true
-    } else {
-      this.pushLog('未找到浏览赚豆按钮')
-      sleep(1000)
-      if (!reopen) {
-        return this.openDrawer(true)
-      }
     }
+    if (this.captureAndCheckByOcr('已连续签到.*', null, null, null, false)) {
+      this.pushLog('当前已经打开抽屉')
+      return true
+    }
+    this.pushLog('打开抽屉失败')
     return false
   }
 
@@ -141,7 +111,9 @@ function SignRunner () {
     if (!this.openDrawer()) {
       return
     }
-    sleep(1000)
+    // 滑动界面
+    automator.randomScrollDown()
+    sleep(2000)
     let checkBtn = this.captureAndCheckByOcr('.*去(浏览|逛逛|完成).*', '执行任务', [config.device_width / 2, 0, config.device_width / 2, config.device_height])
     // 增加限制 避免进入死循环 这里大概就11个
     let limit = 15, region = null, executed = false
@@ -164,21 +136,17 @@ function SignRunner () {
       automator.clickCenter(checkBtn)
       sleep(2000)
       let total = 20
+      this.pushLog('等待' + total + '秒')
       while (total-- > 0) {
         sleep(1000)
-        this.pushLog('等待' + total + '秒')
+        this.replaceLastLog('等待' + total + '秒')
       }
       this.pushLog('准备返回')
       sleep(1000)
       automator.back()
       sleep(1000)
       let l = 3
-      while (!widgetUtils.widgetCheck('浏览赚豆', 2000) && l-- > 0) {
-        let btn = null
-        if ((btn = widgetUtils.widgetGetOne('已连签\\d+天'))) {
-          FloatyInstance.setFloatyInfo({ x: btn.bounds().centerX(), y: btn.bounds().centerY() }, '找到了已连签控件，直接打开抽屉开始执行任务')
-          return this.doHangTasks(hangLimit)
-        }
+      while (!this.captureAndCheckByOcr('浏览赚豆|任务记录') && l-- > 0) {
         automator.back()
         sleep(1000)
       }

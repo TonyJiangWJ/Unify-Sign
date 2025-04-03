@@ -34,7 +34,7 @@ function SignRunner () {
     // ...
     if (this.openSignPage()) {
       // 关闭更新提醒
-      this.displayButtonAndClick(widgetUtils.widgetGetOne('下次再说', 2000), '更新提醒，跳过')
+      this.captureAndCheckByOcr('下次再说', '下次再说', null, 1000, true, 1)
       if (this.doSign()) {
         // 执行成功后触发 标记当前任务已完成 失败了请勿调用
         this.setExecuted()
@@ -49,21 +49,27 @@ function SignRunner () {
     commonFunctions.launchPackage(_package_name)
     sleep(500)
     this.awaitAndSkip()
+    this.pushLog('查找 我的')
     let mineBtn = widgetUtils.widgetGetOne('我的')
-    if (this.displayButtonAndClick(mineBtn, '我的', 1000)) {
+    if (this.displayButtonAndClick(mineBtn, '我的', 1000, false, bd => [bd.left + bd.width() / 2, bd.top - bd.height()])) {
+      sleep(1000)
+      this.captureAndCheckByOcr('下次再说', '下次再说', null, 1000, true, 1)
+      this.pushLog('查找 米金 入口')
       let entry = widgetUtils.widgetGetOne('米金')
       if (this.displayButtonAndClick(entry, '米金入口')) {
         return true
       }
     } else if (tryTime <= 3) {
+      this.pushErrorLog('查找 我的 失败 二次尝试')
       return this.openSignPage(tryTime + 1)
     }
     return false
   }
 
   this.doSign = function () {
-    sleep(1000)
+    sleep(2000)
     let success = false
+    this.pushLog('通过OCR查找赚米金入口')
     if (this.captureAndCheckByOcr(daily_sign_entry, '赚米金入口', null, 1000, true, 3)) {
       sleep(1000)
       if (widgetUtils.widgetCheck('米金签到|已连签|立即签到')) {
@@ -79,6 +85,8 @@ function SignRunner () {
       }
       // todo 校验签到已完成
       this.doBrowseTasks()
+    } else {
+      this.pushErrorLog('查找 赚米金入口 失败')
     }
     return success
   }

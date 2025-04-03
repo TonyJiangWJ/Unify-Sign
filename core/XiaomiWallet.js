@@ -51,13 +51,13 @@ function SignRunner () {
           this.pushLog('今日可能已完成签到')
         } else {
           this.pushLog('无法校验今天是否成功签到')
-          NotificationHelper.createNotification('小米钱包每日签到', '今日签到未成功，请检查脚本或者手动签到', config.notificationId * 10 + 4)
+          NotificationHelper.createNotification('小米钱包每日签到', '今日签到未成功，请检查脚本或者手动签到', 'xiaomiwallet')
         }
         if (this.doDailyTask()) {
           this.setExecuted()
         } else {
           this.pushLog('今日任务执行失败')
-          NotificationHelper.createNotification('小米钱包每日签到', '今日每日任务执行失败，请检查脚本或者手动签到', config.notificationId * 10 + 4)
+          NotificationHelper.createNotification('小米钱包每日签到', '今日每日任务执行失败，请检查脚本或者手动签到', 'xiaomiwallet')
         }
       }
     } else {
@@ -117,7 +117,7 @@ function SignRunner () {
 
   this.browseVideoMember = function () {
     NotificationHelper.createNotification('小米钱包每日提醒',
-      '视频会员领取提醒，目前懒得开发，请手动执行一下', config.notificationId * 10 + 5)
+      '视频会员领取提醒，目前懒得开发，请手动执行一下', 'xiaomiwallet:unimpl')
     return true
   }
   /**

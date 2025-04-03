@@ -1,6 +1,6 @@
 const SubTaskComponent = {
   name: 'SubTaskComponent',
-  data() {
+  data () {
     return {
       subTaskChecked: []
     }
@@ -10,7 +10,7 @@ const SubTaskComponent = {
   },
   watch: {
     subTaskChecked: {
-      deep:true,
+      deep: true,
       immediate: false,
       handler: function (v) {
         this.subTasks.forEach(s => s.enabled = false)
@@ -38,7 +38,7 @@ const SubTaskComponent = {
       this.$refs.subTaskCheckboxes[index].toggle()
     },
   },
-  mounted() {
+  mounted () {
     this.subTaskChecked = this.subTasks.filter(v => v.enabled).map(v => v.taskCode)
   },
   template: `
@@ -73,20 +73,29 @@ const SignConfig = {
             enabled: true
           },
           {
-            name: '全家签到',
-            taskCode: 'Fami',
-            script: 'Fami.js',
-            enabled: true
-          },
-          {
             name: '京东签到',
             taskCode: 'JingDong',
             script: 'JingDongBeans.js',
             enabled: true,
             subTasks: [
               {
+                taskCode: 'beanSign',
+                taskName: '签到',
+                enabled: true,
+              },
+              {
+                taskCode: 'doubleSign',
+                taskName: '双签领豆',
+                enabled: false,
+              },
+              {
                 taskCode: 'plantBean',
                 taskName: '种豆得豆',
+                enabled: true,
+              },
+              {
+                taskCode: 'drugSign',
+                taskName: '京东买药',
                 enabled: true,
               }
             ]
@@ -169,7 +178,7 @@ const SignConfig = {
       this.$router.push('/basic/sign/scheduleList')
     },
     toScheduleConfig: function (taskCode) {
-      this.$router.push({ path: '/basic/sign/schedule', query: { taskCode: taskCode }})
+      this.$router.push({ path: '/basic/sign/schedule', query: { taskCode: taskCode } })
     },
     manageGroup: function () {
       this.$router.push('/basic/sign/groupList')
@@ -183,15 +192,24 @@ const SignConfig = {
       console.log('before change', JSON.stringify(v))
       this.configs.supported_signs.forEach(s => s.enabled = false)
       if (v && v.length > 0) {
-        this.configs.supported_signs.filter(s => v.indexOf(s.taskCode) > -1).forEach(s => s.enabled = true)
+        this.configs.supported_signs.filter(s => {
+          if (v.indexOf(s.taskCode) > -1) {
+            return true
+          }
+          // 如果子任务有启用的，直接选中
+          if (s.subTasks && s.subTasks.length > 0 && s.subTasks.filter(st => st.enabled).length > 0) {
+            return true
+          }
+          return false
+        }).forEach(s => s.enabled = true)
       }
       console.log(JSON.stringify(this.checked))
     }
   },
-  mounted() {
+  mounted () {
     this.checked = this.configs.supported_signs.filter(v => v.enabled).map(v => v.taskCode)
   },
-  beforeDestroy() {
+  beforeDestroy () {
     console.log('组件销毁，当前配置信息：', JSON.stringify(this.configs))
   },
   template: `<div>
@@ -212,7 +230,7 @@ const SignConfig = {
               <van-button square type="primary" text="设置执行时间" @click="toScheduleConfig(supportedSign.taskCode)"/>
             </div>
           </template>
-          <van-cell clickable :title="supportedSign.name" @click="toggle(index)" >
+          <van-cell clickable :title="supportedSign.name + supportedSign.taskCode" @click="toggle(index)" >
             <template #right-icon>
               <van-checkbox :name="supportedSign.taskCode" ref="checkboxes" v-show="!supportedSign.subTasks || supportedSign.subTasks.length == 0" />
             </template>
