@@ -1,4 +1,5 @@
 let Index = {
+  components: { UpdateTipsDialog, AnnouncementDialog },
   mixins: [mixin_methods],
   data: function () {
     return {
@@ -45,6 +46,8 @@ let Index = {
     }
   },
   template: `<div>
+    <update-tips-dialog />
+    <announcement-dialog />
     <van-cell-group>
       <van-cell :title="item.title" is-link v-for="item in menuItems" :key="item.link" @click="routerTo(item)"/>
     </van-cell-group>
