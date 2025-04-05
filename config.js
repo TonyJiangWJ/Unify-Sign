@@ -171,4 +171,4 @@ config.exportIfNeeded(module, null)
 
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.4.0'
+config.code_version = 'v2.4.1'
