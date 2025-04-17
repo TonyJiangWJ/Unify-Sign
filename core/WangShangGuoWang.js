@@ -35,6 +35,7 @@ function SignRunner () {
     this.openPackageAndSkipDialog(this.packageName)
     this.pushLog('等待界面打开')
     sleep(1000)
+    this.waitIfShowDialog()
     if (widgetUtils.widgetWaiting('签到', 8000)) {
       this.pushLog('打开完成，等待1秒')
       sleep(1000)
@@ -73,6 +74,22 @@ function SignRunner () {
       // 执行成功后触发 标记当前任务已完成 失败了请勿调用
       success && this.setExecuted()
       commonFunctions.minimize()
+    }
+  }
+
+  this.waitIfShowDialog = function () {
+    let tareget = widgetUtils.widgetGetOne('今日不再出现', 2000)
+    if (tareget) {
+      this.pushLog('存在弹窗信息')
+      target = widgetUtils.widgetGetOne('未选定今日不再出现', 1000)
+      this.displayButtonAndClick(target, '不再出现')
+      target = widgetUtils.widgetGetOne('关闭', 1000)
+      if (!this.displayButtonAndClick(tareget)) {
+        this.pushErrorLog('未能找到 关闭 按钮 弹窗无法关闭')
+      } else {
+        this.pushLog('关闭弹窗')
+      }
+      sleep(1000)
     }
   }
 

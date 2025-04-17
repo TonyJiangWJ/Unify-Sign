@@ -127,20 +127,21 @@ let commonDefaultConfig = {
 }
 
 
-module.exports = (default_config, CONFIG_STORAGE_NAME, PROJECT_NAME) => {
+module.exports = (default_config, options) => {
+  let { CONFIG_STORAGE_NAME, PROJECT_NAME, no_cache_configs, securityFields } = options
   let config = {}
   let currentEngine = engines.myEngine().getSource() + ''
   let isRunningMode = currentEngine.endsWith('/config.js') && typeof module === 'undefined'
   // 文件更新后直接生效，不使用缓存的值
-  let no_cache_configs = ['release_access_token', 'code_version']
-  let securityFields = ['password', 'alipay_lock_password']
+  no_cache_configs = ['release_access_token', 'code_version'].concat(no_cache_configs || [])
+  securityFields = ['password', 'alipay_lock_password'].concat(securityFields || [])
   let objFields = []
   let storageConfig = storages.create(CONFIG_STORAGE_NAME)
   let AesUtil = require('./lib/AesUtil.js')
   let aesKey = device.getAndroidId()
 
   // 复制公共配置
-  Object.assign(default_config, commonDefaultConfig)
+  default_config = Object.assign({}, commonDefaultConfig, default_config)
   Object.keys(default_config).forEach(key => {
     let storedVal = storageConfig.get(key)
     if (typeof storedVal !== 'undefined' && no_cache_configs.indexOf(key) < 0) {
@@ -185,7 +186,7 @@ module.exports = (default_config, CONFIG_STORAGE_NAME, PROJECT_NAME) => {
       }
       config[config_key] = value
     }
-    console.verbose('覆写配置', storage_name, key)
+    console.verbose('覆写配置', storage_name, key, typeof value == 'string' && value.length > 20 ? value.substring(0, 20) : value)
     storages.create(storage_name).put(key, value)
   }
 
@@ -308,6 +309,9 @@ module.exports = (default_config, CONFIG_STORAGE_NAME, PROJECT_NAME) => {
       }, 3000)
     }
   }
+
+  config.convertDefaultData = convertDefaultData
+  config.getCurrentWorkPath = getCurrentWorkPath
 
   return config
 
