@@ -331,3 +331,5 @@ signRunner.setName('测试我的应用签到').exec();
 | 支付宝 | 微信 | 也欢迎支付宝扫码领红包，你领我也得，双赢！|
 | :----: | :----: | :----: |
 | ![alipay_qrcode](./resources/alipay_qrcode.png) | ![wechat_qrcode](./resources/wechat_qrcode.png) | ![扫码领红包](./resources/hongbao_qrcode.png) |
+
+* 也可以运行 `unit/支持作者.js` 在线获取红包口令，通过支付宝直接打开领取，每使用一个红包我都可以获取一分钱的收益。

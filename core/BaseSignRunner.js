@@ -263,16 +263,29 @@ function BaseSignRunner () {
   }
 
   this.captureAndCheckByOcr = function (regex, content, region, delay, clickIt, loop) {
+    let options = {}
+    if (typeof content === 'object' && content != null) {
+      options = content || {}
+    } else {
+      options.content = content || regex
+      options.region = region || null
+      options.delay = delay || 800
+      options.clickIt = clickIt || false
+      options.loop = loop || 3
+    }
     if (!localOcrUtil.enabled) {
       logUtils.warnInfo('当前AutoJS不支持OCR')
       this.pushLog('当前AutoJS不支持OCR')
       return null
     }
-    content = content || regex
-    delay = delay || 800
-    if (typeof loop === 'undefined') {
-      loop = 3
+    if (typeof options.loop === 'undefined') {
+      options.loop = 3
     }
+    content = options.content || regex
+    region = options.region || null
+    delay = options.delay || 800
+    clickIt = options.clickIt || false
+    loop = options.loop
     FloatyInstance.hide()
     logFloaty.hide()
     sleep(40)
