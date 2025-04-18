@@ -591,6 +591,10 @@ function BeanCollector () {
       debugInfo(['检测次数过多 直接返回控件{}', b])
       return target
     }
+    if (!target) {
+      errorInfo(['目标控件不存在'])
+      return null
+    }
     let b = target.bounds()
     debugInfo(['双签控件位置：{} 可见范围：{}', b, visibleBounds])
     if (b.top < visibleBounds[1]) {
