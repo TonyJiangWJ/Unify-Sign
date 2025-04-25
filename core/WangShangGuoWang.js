@@ -88,6 +88,11 @@ function SignRunner () {
         this.pushErrorLog('未能找到 关闭 按钮 弹窗无法关闭')
       } else {
         this.pushLog('关闭弹窗')
+        target = widgetUtils.widgetGetOne('关闭', 1000)
+        if (target) {
+          this.pushWarningLog('弹窗关闭失败，尝试无障碍点击')
+          target.click()
+        }
       }
       sleep(1000)
     }

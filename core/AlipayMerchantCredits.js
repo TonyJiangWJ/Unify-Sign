@@ -23,6 +23,11 @@ let WarningFloaty = singletonRequire('WarningFloaty')
 let BaseSignRunner = require('./BaseSignRunner.js')
 function SignRunner () {
   BaseSignRunner.call(this)
+  const DAILY_SIGNED = 'alimerchaint_DAILY_SIGNED'
+  this.initStorages = function () {
+    // 是否执行过签到
+    this.signedStore = this.createStoreOperator(DAILY_SIGNED, { executed: false, count: 0 })
+  }
 
   let _package_name = 'com.eg.android.AlipayGphone'
   /**
@@ -110,7 +115,8 @@ function SignRunner () {
 
   this.findEntranceAndDoTask = function () {
     this.doTask()
-    FloatyInstance.setFloatyText('')
+    this.pushLog('任务执行完毕，准备检查是否有可领取的积分')
+    this.openCreditsPage()
   }
 
   this.doTask = function (tryTime) {
@@ -131,6 +137,11 @@ function SignRunner () {
       }
       this.doTask(tryTime - 1)
     }
+    let collectBtns = widgetUtils.widgetGetAll('领积分', 3000)
+    if (collectBtns && collectBtns.length > 0) {
+      this.pushLog('存在领积分按钮 执行领取')
+      collectBtns.forEach(btn => btn.click())
+    }
   }
 
   function getFirstTaskInfo (btnList) {
@@ -142,11 +153,11 @@ function SignRunner () {
       return { title: title, btn: btn }
     })
     const taskDefine = [
+      // 商品橱窗 滑动15秒
       () => buildTask((taskInfo) => /商品橱窗/.test(taskInfo.title), function () {
         let startY = config.device_height - config.device_height * 0.15
         let endY = startY - config.device_height * 0.3
         let limit = 16
-
         this.replaceLastLog('等待任务完成16s')
         while (limit-- > 0 && !widgetUtils.widgetGetOne('任务已完成', 1000)) {
           automator.gestureDown(startY, endY)
@@ -154,7 +165,10 @@ function SignRunner () {
         }
         automator.back()
       }),
-      () => buildTask((taskInfo) => /视频广告/.test(taskInfo.title), function () {
+      // 视频任务 直接等待 设置静音
+      () => buildTask((taskInfo) => /视频/.test(taskInfo.title), function () {
+        let currentVolume = device.getMusicVolume()
+        device.setMusicVolume(0)
         let limit = 32
         this.pushLog('等待' + limit + 's')
         while (limit-- > 0) {
@@ -163,32 +177,35 @@ function SignRunner () {
         }
         this.pushLog('等待3秒 确保完成')
         sleep(3000)
+        device.setMusicVolume(currentVolume)
         automator.back()
       }),
+      // 需要滑动等待的任务
       () => buildTask((taskInfo) => /逛0元下单好物|红包会场/.test(taskInfo.title),
         function () {
           let startY = config.device_height - config.device_height * 0.15
           let endY = startY - config.device_height * 0.3
-          let limit = 32
-          this.replaceLastLog('等待任务完成32s')
-          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 1000) || limit > 15)) {
+          let limit = 35
+          this.pushLog('等待任务完成'+limit+'s')
+          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 3000) || limit > 5)) {
             automator.gestureDown(startY, endY)
             this.replaceLastLog('等待任务完成' + limit + 's')
           }
           automator.back()
         }
       ),
-      () => buildTask((taskInfo) => /借呗|逛信用卡|红包集卡抽|芝麻攒粒攻略|逛一逛领优惠|网商贷/.test(taskInfo.title),
+      // 进入并等待即可的任务
+      () => buildTask((taskInfo) => /游戏中心|逛运动走路线|借呗|逛信用卡|红包集卡抽|芝麻攒粒攻略|逛一逛领优惠|网商贷|逛一逛租赁专场|飞猪旅行/.test(taskInfo.title),
         function () {
-          let limit = 32
-          this.replaceLastLog('等待任务完成32s')
-          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 1000) || limit > 15)) {
+          let limit = 35
+          this.pushLog('等待任务完成'+limit+'s')
+          while (limit-- > 0 && (widgetUtils.widgetGetOne('浏览.*秒|逛一逛.*', 3000) || limit > 5)) {
             this.replaceLastLog('等待任务完成' + limit + 's')
             sleep(1000)
           }
           automator.back()
         }
-      )
+      ),
     ]
     for (let i = 0; i < taskDefine.length; i++) {
       let taskExecutor = taskDefine[i]()

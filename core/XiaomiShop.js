@@ -33,8 +33,6 @@ function SignRunner () {
     // 在这里写签到执行的代码
     // ...
     if (this.openSignPage()) {
-      // 关闭更新提醒
-      this.captureAndCheckByOcr('下次再说', '下次再说', null, 1000, true, 1)
       if (this.doSign()) {
         // 执行成功后触发 标记当前任务已完成 失败了请勿调用
         this.setExecuted()
@@ -53,14 +51,21 @@ function SignRunner () {
     let mineBtn = widgetUtils.widgetGetOne('我的')
     if (this.displayButtonAndClick(mineBtn, '我的', 1000, false, bd => [bd.left + bd.width() / 2, bd.top - bd.height()])) {
       sleep(1000)
-      this.captureAndCheckByOcr('下次再说', '下次再说', null, 1000, true, 1)
+      this.captureAndCheckByOcr('下次再说|本次忽略', '下次再说', null, 1000, true, 1)
       this.pushLog('查找 米金 入口')
       let entry = widgetUtils.widgetGetOne('米金')
       if (this.displayButtonAndClick(entry, '米金入口')) {
-        return true
+        if (widgetUtils.widgetCheck('.*(积攒米金|每日签到|米金即将过期).*', 2000) || this.captureAndCheckByOcr('每日签到')) {
+          return true
+        }
+        this.pushWarningLog('无法找到签到页面控件')
+      } else {
+        this.pushWarningLog('打开 我的 页面失败')
       }
+      return this.openSignPage(tryTime + 1)
     } else if (tryTime <= 3) {
       this.pushErrorLog('查找 我的 失败 二次尝试')
+      this.captureAndCheckByOcr('下次再说|本次忽略', '下次再说', null, 1000, true, 1)
       return this.openSignPage(tryTime + 1)
     }
     return false
