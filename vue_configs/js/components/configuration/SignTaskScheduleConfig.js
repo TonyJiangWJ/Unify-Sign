@@ -345,8 +345,8 @@ const TaskScheduleConfig = (() => {
     },
     template: `
     <div>
-      <tip-block style="padding: 0.5rem 0;">任务名称：[{{taskCode}}]{{taskInfo.taskName}}<van-button plain hairline type="primary" size="mini" style="margin-left: 0.3rem;" @click="addNew">新增</van-button></tip-block>
-      <van-cell-group>
+      <tip-block style="padding: 0.5rem 0;"><span style="font-weight:1000;">任务名称：[{{taskCode}}]{{taskInfo.taskName}}</span><van-button plain hairline type="primary" size="mini" style="margin-left: 0.3rem;" @click="addNew">新增</van-button></tip-block>
+      <van-cell-group style="padding-left: 1rem;">
         <van-swipe-cell v-for="(schedule,index) in scheduleConfigs" :key="schedule.taskCode + schedule.id" stop-propagation>
           <van-cell clickable 
             :title="schedule.executeType|displayType" :label="schedule|displayLabel">

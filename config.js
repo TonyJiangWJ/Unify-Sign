@@ -54,7 +54,22 @@ let default_config = {
           taskCode: 'drugSign',
           taskName: '京东买药',
           enabled: true,
-        }
+        },
+        {
+          taskCode: 'luckySign',
+          taskName: '幸运奖励',
+          enabled: true,
+        },
+        {
+          taskCode: 'gameCenter',
+          taskName: '互动游戏',
+          enabled: true,
+        },
+        {
+          taskCode: 'dailyTask',
+          taskName: '每日领取',
+          enabled: true,
+        },
       ]
     },
     {

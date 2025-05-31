@@ -2,7 +2,7 @@
  * @Author: TonyJiangWJ
  * @Date: 2020-04-25 16:46:06
  * @Last Modified by: TonyJiangWJ
- * @Last Modified time: 2025-03-30 00:03:10
+ * @Last Modified time: 2025-05-31 20:51:46
  * @Description: 
  */
 
@@ -22,6 +22,8 @@ function CreditRunner () {
   BaseSignRunner.call(this)
   let _package_name = 'com.eg.android.AlipayGphone'
   let _family_regex = /^\+(\d+)$/
+  let _this = this
+  let sign_page_widget = '会员.*签到赚积分|.*连续签到.*|我要补签|.*你已超过全球.*|做任务赚积分'
 
   this.collectFamily = false
 
@@ -146,10 +148,33 @@ function CreditRunner () {
     return false
   }
 
+  this.ensureCurrentInTaskPage = function () {
+    let tmp
+    if ((tmp = currentPackage()) != _package_name) {
+      warnInfo(['检测到当前包名{}不正确，重新打开积分签到界面', tmp])
+      return openSignPage()
+    }
+    let opened = false, limit = 5
+    while (!(opened = widgetUtils.widgetWaiting(sign_page_widget, null, 1000)) && limit-- > 0) {
+      automator.back()
+      sleep(1000)
+      if (currentPackage() != _package_name) {
+        return openSignPage()
+      }
+    }
+    if (opened) {
+      return true
+    }
+    commonFunctions.minimize(_package_name)
+    this.pushLog('未能打开积分签到任务界面， 重新打开')
+    return openSignPage()
+  }
+
   this.doTask = function (limit) {
     if (limit <= 0) {
       return
     }
+    this.ensureCurrentInTaskPage()
     this.pushLog('等待页面完全刷新 等待5秒')
     let wait = 5
     while (wait > 0) {
@@ -173,13 +198,33 @@ function CreditRunner () {
     let anyFailed = false
     let toFinishBtn = toFinishList.map(v => {
       try {
+
+        function getTitle (container) {
+          let textViewContainer = container.child(0).child(0)
+          // 找到第一个textView控件
+          let textView = textViewContainer.child(1)
+          if (textView && textView.className() == 'android.widget.TextView') {
+            return { title: textView.text(), boundsInfo: textView.bounds() }
+          }
+          if (textView.child(0) && textView.child(0).className() == 'android.widget.TextView') {
+            return { title: textView.child(0).text(), boundsInfo: textView.child(0).bounds() }
+          }
+          textView = textViewContainer.child(2)
+          if (textView && textView.className() == 'android.widget.TextView') {
+            return { title: textView.text(), boundsInfo: textView.bounds() }
+          }
+          logUtils.warnInfo('无法读取当前任务标题，其结构和预定义解析代码不匹配')
+          return { title: '无法提取正确的标题', bounds: textViewContainer.bounds() }
+        }
         // TODO 需要优化一下这块控件信息的判断 一旦结构变更就无法正确执行了
         let container = v.parent().parent().parent()
         let boundsInfo = null, title = null
         try {
-          title = container.child(0).child(0).child(1).text() || container.child(0).child(0).child(1).child(0).text()
-          boundsInfo = container.child(0).child(0).child(1).bounds()
+          let result = getTitle(container)
+          title = result.title
+          boundsInfo = result.bounds
         } catch (e) {
+          commonFunctions.printExceptionStack(e)
           boundsInfo = container.bounds()
           title = '提取标题失败'
         }
@@ -201,23 +246,13 @@ function CreditRunner () {
     if (anyFailed) {
       signFailedUtil.recordFailedWidgets(this.taskCode, '任务控件信息')
     }
+    // 提取当前可以执行的第一个任务
     let task = findFirstExecutableTask.call(this, toFinishBtn)
     // TODO 确保按钮在可见范围
     if (task && task.executable) {
       this.pushLog('执行任务：' + task.name)
       task.execute.apply(this)
-      let tmp
-      if ((tmp = currentPackage()) != _package_name) {
-        warnInfo(['检测到当前包名{}不正确，重新打开积分签到界面', tmp])
-        openSignPage()
-      }
-      sleep(1000)
-      if (!widgetUtils.widgetWaiting('会员签到赚积分', null, 2000)) {
-        this.pushLog('未能打开积分签到任务界面， 重新打开')
-        openSignPage()
-        sleep(2000)
-        this.pushLog('打开结果：' + widgetUtils.widgetWaiting('会员签到赚积分', null, 2000))
-      }
+      this.pushLog('当前任务执行完毕，尝试下一个任务')
       return this.doTask(limit)
     } else {
       this.pushLog('未找到可以执行的任务，请手动执行')
@@ -251,11 +286,13 @@ function CreditRunner () {
           let limit = new CountdownChecker(16)
           let startY = config.device_height - config.device_height * 0.15
           let endY = startY - config.device_height * 0.3
+          automator.gestureDown(startY, endY)
+          this.pushLog('滑动浏览，等待' + limit.getRestTime() + '秒')
           while (!this.captureAndCheckByOcr('返回领积分', '返回领积分', null, null, false, 1)) {
             if (limit.isOvertime()) {
               break
             }
-            FloatyInstance.setFloatyText('等待' + limit.getRestTime() + '秒')
+            this.replaceLastLog('滑动浏览，等待' + limit.getRestTime() + '秒')
             automator.gestureDown(startY, endY)
             sleep(1000)
           }
@@ -308,7 +345,7 @@ function CreditRunner () {
       ),
       // 简单的小程序任务
       () => buildTask((btnInfo) => {
-        let regex = /小程序|饿了么/
+        let regex = /小程序|饿了么|逛一逛|淘宝特价版/
         return regex.test(btnInfo.title)
       },
         function (btn) {
@@ -322,7 +359,6 @@ function CreditRunner () {
           sleep(1000)
         }
       ),
-
     ]
 
     for (let i = 0; i < taskBuilderList.length; i++) {
@@ -343,33 +379,38 @@ function CreditRunner () {
           executable: true,
           execute: function () {
             let target = resultList[0]
-            let btn = this.ensureTargetInVisible(target.btn,
-              [0, config.device_height * 0.1, config.device_width, config.device_height * 0.8],
-              () => widgetUtils.widgetGetOne(target.title)
-            )
-            sleep(1000)
-            let titleContainer = widgetUtils.widgetGetOne(target.title, 1000)
-            if (titleContainer) {
-              let bns = titleContainer.bounds()
-              warningFloaty.addRectangle('查找去完成按钮', [bns.left, bns.top, config.device_width - bns.left, bns.height() * 3])
-              btn = boundsInside(bns.left, bns.top, config.device_width, bns.bottom + bns.height() * 2).textContains('去完成').findOne(1000)
-              if (btn) {
-                debugInfo(['重新获取控件{}', JSON.stringify(btn.bounds())])
-              } else {
-                skipTaskList.push(target.title)
-                warnInfo(['重新获取控件失败'])
-              }
-            } else {
-              warnInfo(['未能重新找到标题：' + target.title])
-              skipTaskList.push(target.title)
-            }
-            if (this.displayButtonAndClick(btn, '去完成', null, false)) {
+            // // 移动到任务区域，确保 去完成按钮 正确
+            // let btn = this.ensureTargetInVisible(target.btn,
+            //   [0, config.device_height * 0.1, config.device_width, config.device_height * 0.8],
+            //   () => widgetUtils.widgetGetOne(target.title)
+            // )
+            // sleep(1000)
+            // // 通过控件重新获取标题对应的去完成按钮
+            // let titleContainer = widgetUtils.widgetGetOne(target.title, 1000)
+            // if (titleContainer) {
+            //   let bns = titleContainer.bounds()
+            //   warningFloaty.addRectangle('查找去完成按钮', [bns.left, bns.top, config.device_width - bns.left, bns.height() * 3.5])
+            //   btn = boundsInside(bns.left, bns.top, config.device_width, bns.bottom + bns.height() * 2.5).textContains('去完成').findOne(1000)
+            //   if (btn) {
+            //     debugInfo(['重新获取控件{}', JSON.stringify(btn.bounds())])
+            //   } else {
+            //     skipTaskList.push(target.title)
+            //     this.pushWarningLog('无法正确找到 去完成 按钮')
+            //     warnInfo(['重新获取去完成控件失败，任务名称：{}', target.title])
+            //   }
+            // } else {
+            //   this.pushWarningLog('无法正确找到任务标题:' + new RegExp(target.title).source)
+            //   warnInfo(['未能重新找到标题：' + target.title])
+            // }
+            // if (this.displayButtonAndClick(btn, '去完成', null, false)) {
+            if (target.btn.click()) {
               // 标记当前任务执行完毕，如果失败了 不再重复执行 避免死循环
               skipTaskList.push(target.title)
               sleep(1000)
               warningFloaty.clearAll()
-              return execute.apply(this, [btn])
+              return execute.apply(this, [target.btn])
             } else {
+              this.pushWarningLog('去完成按钮点击失败')
               let bns = resultList[0].btn.bounds()
               warningFloaty.addRectangle('未找到去完成按钮', [bns.left, bns.top, bns.width(), bns.height()])
               sleep(1000)
@@ -398,23 +439,22 @@ function CreditRunner () {
         sleep(1000)
       }
     } else {
-      this.pushErrorLog('查找 逛一逛赚积分失败')
+      this.pushErrorLog('查找 逛一逛赚积分15秒失败')
     }
     this.displayButtonAndClick(widgetUtils.widgetGetOne('做任务赚积分', 2000))
   }
 
   this.executeTasks = function () {
-    if (!widgetUtils.widgetCheck('会员签到赚积分', 2000)) {
+    if (!widgetUtils.widgetCheck(sign_page_widget, 2000)) {
       this.pushLog('未打开积分签到任务界面 重新打开')
       openSignPage()
-      widgetUtils.widgetCheck('会员签到赚积分', 2000)
       sleep(1000)
     }
     // 十五秒广告
     this.doBrowseTask()
 
     // 执行任务
-    this.doTask(3)
+    this.doTask(5)
     automator.back()
   }
 
@@ -444,6 +484,9 @@ function CreditRunner () {
       data: url,
       packageName: 'com.eg.android.AlipayGphone'
     })
+    let openResult = widgetUtils.widgetWaiting(sign_page_widget, null, 2000)
+    _this.pushLog('打开结果：' + openResult)
+    return openResult
   }
 
   function CountdownChecker (limit) {

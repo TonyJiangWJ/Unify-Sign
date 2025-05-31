@@ -74,6 +74,10 @@ function SignRunner () {
       // 执行成功后触发 标记当前任务已完成 失败了请勿调用
       success && this.setExecuted()
       commonFunctions.minimize()
+    } else {
+      this.pushErrorLog('无法进入签到界面，关闭当前应用，等待调度执行')
+      commonFunctions.killCurrentApp()
+      commonFunctions.minimize()
     }
   }
 

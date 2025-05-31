@@ -24,11 +24,18 @@ function SignRunner () {
 
   this.checkAndCollect = function (doNotRetry) {
     let mineBtn = this.captureAndCheckByOcr('我的淘宝', '我的淘宝', [config.device_width / 2, config.device_height * 0.8, config.device_width / 2, config.device_height * 0.2], 1000, true, 3)
-    let coinButton = widgetUtils.widgetGetOne('淘金币')
+    let coinButton = widgetUtils.widgetGetOne('(领)?淘金币|淘金币抵')
     if (coinButton) {
       this.displayButtonAndClick(coinButton, '准备进入领淘金币')
       // 比较坑爹的 要等好久才会出现控件
+      this.pushLog('等待界面加载5秒')
       sleep(5000)
+      let eventEntry = widgetUtils.widgetGetOne('金币日常版.*', 2000)
+      if (eventEntry) {
+        this.pushLog('存在活动，回到日常版本')
+        automator.clickCenter(eventEntry)
+        sleep(1000)
+      }
       FloatyInstance.setFloatyText('准备查找签到领金币按钮')
       let getByWidget = widgetUtils.widgetGetOne('点击签到', 2000)
       if (this.displayButtonAndClick(getByWidget, '点击签到')) {
@@ -50,13 +57,13 @@ function SignRunner () {
           return
         }
       }
-      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*明早7点可领|\\d+.*明日签到.*', null, true)
+      let result = widgetUtils.alternativeWidget(/\s*今日签到\s*/, '.*(明早7点可领|\\d+.*明日签到|赚更多金币).*', null, true)
       if (result.value === 1) {
         let signButton = result.target
         if (signButton) {
           this.displayButtonAndClick(signButton, '找到了签到按钮 ' + result.content)
           sleep(2000)
-          if (widgetUtils.widgetWaiting(/\s*明日签到\s*/)) {
+          if (widgetUtils.widgetWaiting(/\s*(明日签到|赚更多金币)\s*/)) {
             this.setExecuted()
           } else {
             logUtils.warnInfo(['未找到明日签到按钮，可能未成功签到'])
@@ -89,7 +96,11 @@ function SignRunner () {
       sleep(1000)
       let result = widgetUtils.alternativeWidget(/每日签到/, /签到成功/, null, true)
       if (result.value === 1) {
-        if (this.displayButtonAndClick(result.target)) {
+        if (result.target.bounds().left > config.device_width) {
+          this.pushLog('按钮在屏幕外，向左滑动')
+          automator.swipe(config.device_width - 10, result.target.bounds().top, 10, result.target.bounds().top, 500)
+        }
+        if (this.displayButtonAndClick(result.target, null, null, true)) {
           this.pushLog('进入每日签到页面')
           sleep(1000)
           automator.back()
