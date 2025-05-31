@@ -54,7 +54,22 @@ let default_config = {
           taskCode: 'drugSign',
           taskName: '京东买药',
           enabled: true,
-        }
+        },
+        {
+          taskCode: 'luckySign',
+          taskName: '幸运奖励',
+          enabled: true,
+        },
+        {
+          taskCode: 'gameCenter',
+          taskName: '互动游戏',
+          enabled: true,
+        },
+        {
+          taskCode: 'dailyTask',
+          taskName: '每日领取',
+          enabled: true,
+        },
       ]
     },
     {
@@ -203,4 +218,4 @@ config.exportIfNeeded(module, null)
 
 // 扩展配置
 extendSignConfig(default_config, config, CONFIG_STORAGE_NAME)
-config.code_version = 'v2.4.2.1'
+config.code_version = 'v2.4.2.2'

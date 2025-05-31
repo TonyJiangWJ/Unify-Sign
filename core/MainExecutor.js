@@ -40,12 +40,32 @@ function MainExecutor () {
             return
           }
         }
+        let done = false
         try {
+          // 增加一个额外线程计时器，如果任务超时，直接跳过或者终止执行
+          let signWatcher = threads.start(function () {
+            // 单任务执行超时10分钟
+            let timeout = 10*60
+            while (!done && timeout-- > 0) {
+              sleep(1000)
+            }
+            if (done) {
+              return
+            }
+            logUtils.errorInfo(['任务：{} 超时!需要强制中断当前脚本', target.name])
+            commonFunctions.setUpAutoStart(5)
+            FloatyInstance.setFloatyText('有任务执行超时，设置五分钟后再试')
+            NotificationHelper.createNotification('有任务执行超时，五分钟后再试', '失败任务名称：' + target.name, 'taskTimeout')
+            exit()
+          })
           if (!require('./' + target.script).setName(target.name).setTaskCode(target.taskCode).setSubTasks(target.subTasks).executeIfNeeded()) {
             failedList.push(target.name)
             restart = true
           }
+          done = true
+          signWatcher.interrupt()
         } catch (e) {
+          done = true
           logUtils.errorInfo('执行异常，' + e)
           FloatyInstance.setFloatyInfo({ x: config.device_width * 0.4, y: config.device_height / 2 }, target.name + ' 执行异常，请检查代码')
           commonFunctions.minimize()
@@ -61,6 +81,8 @@ function MainExecutor () {
         logUtils.errorInfo(['执行失败的任务：{}', JSON.stringify(failedList)])
         NotificationHelper.createNotification('有任务执行失败，五分钟后再试', '失败任务名称：' + failedList.join(','), 'taskFailed')
       } else {
+        NotificationHelper.cancelNotice('taskFailed')
+        NotificationHelper.cancelNotice('taskTimeout')
         logFloaty.pushLog('所有签到任务完成')
         regenerateNextStartUp()
       }
